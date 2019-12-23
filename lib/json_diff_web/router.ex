@@ -16,6 +16,7 @@ defmodule JsonDiffWeb.Router do
   scope "/", JsonDiffWeb do
     pipe_through :browser
 
+    get "/diff", DiffController, :diff
     get "/", PageController, :index
   end
 
