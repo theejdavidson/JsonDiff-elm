@@ -14,7 +14,9 @@ import Html.Attributes exposing (src)
 
 
 type alias Model =
-    { jsonTextA : String }
+    { jsonTextA : String
+    , jsonTextB : String
+    }
 
 
 type alias Flags =
@@ -23,7 +25,8 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-    ( { jsonTextA = "" }
+    ( { jsonTextA = "<Paste first JSON text here>"
+    , jsonTextB = "<Paste second JSON text here>"}
     , Cmd.none
     )
 
@@ -44,11 +47,22 @@ subscriptions model =
 type Msg
     = NoOp
     | JsonTextA String
+    | JsonTextB String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        JsonTextA s ->
+            ( { model | jsonTextA = s }, Cmd.none )
+
+        JsonTextB s ->
+            ( { model | jsonTextB = s }, Cmd.none )
+
+        NoOp ->
+            ( model, Cmd.none )
+
+    
 
 
 
@@ -61,14 +75,14 @@ view model =
     , body =
         [ layout [] <|
             column [ width fill, spacingXY 0 20 ]
-                [ jsonA model
+                [ jsonInput model
                 ]
         ]
     }
 
 
-jsonA : model -> Element Msg
-jsonA model =
+jsonInput : Model -> Element Msg
+jsonInput model =
     column
         [ width (px 800)
         , spacingXY 0 10
@@ -82,11 +96,26 @@ jsonA model =
             , padding 3
             ]
             { onChange = JsonTextA
-            , text = "jsonTextA"
+            , text = model.jsonTextA
             , placeholder = Nothing
             , label =
                 Input.labelAbove [] <|
-                    Element.text "Paste the JSON text below:"
+                    Element.text "Paste first json text below:"
+            , spellcheck = False
+            }
+        , Input.multiline
+            [ height (px 300)
+            , Border.width 1
+            , Border.rounded 3
+            , Border.color lightCharcoal
+            , padding 3
+            ]
+            { onChange = JsonTextB
+            , text = model.jsonTextB
+            , placeholder = Nothing
+            , label =
+                Input.labelAbove [] <|
+                    Element.text "Paste second json text below:"
             , spellcheck = False
             }
         ]
