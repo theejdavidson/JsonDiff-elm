@@ -1,11 +1,13 @@
 module Main exposing (..)
 
+--import Html as HTML exposing (Html, button, div, h1, img, text)
+
 import Browser
 import Element exposing (..)
+import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Html as HTML exposing (Html, div, h1, img, text)
 import Html.Attributes exposing (src)
 
 
@@ -52,6 +54,7 @@ type Msg
     | JsonTextA String
     | JsonTextB String
     | JsonDiff String
+    | UserRequestedDiff
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -68,6 +71,9 @@ update msg model =
 
         JsonDiff s ->
             ( { model | jsonDiff = s }, Cmd.none )
+
+        UserRequestedDiff ->
+            ( { model | jsonDiff = "This will come from the server" }, Cmd.none )
 
 
 
@@ -95,27 +101,26 @@ jsonInput model =
         ]
         [ jsonTextElementA model.jsonTextA
         , jsonTextElementB model.jsonTextB
-        , jsonDiffElement 
+        , Input.button [ Background.color (Element.rgb255 238 238 238) ]
+            { onPress = Just UserRequestedDiff
+            , label = Element.text "Diff"
+            }
+        , jsonDiffElement model.jsonDiff
         ]
 
 
-jsonDiffElement :  Element Msg
-jsonDiffElement =
-    Input.multiline
+jsonDiffElement : String -> Element Msg
+jsonDiffElement jsonDiff =
+    Element.paragraph
         [ height (px 300)
         , Border.width 1
         , Border.rounded 3
         , Border.color lightCharcoal
         , padding 3
         ]
-        { onChange = JsonDiff
-        , text = "Diff from sever"
-        , placeholder = Nothing
-        , label =
-            Input.labelAbove [] <|
-                Element.text "Diff should show"
-        , spellcheck = False
-        }
+        [
+         text jsonDiff --Need to make this a variable call
+        ]
 
 
 jsonTextElementA : String -> Element Msg
