@@ -9,6 +9,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes exposing (src)
+import Http
 
 
 
@@ -54,7 +55,8 @@ type Msg
     | JsonTextA String
     | JsonTextB String
     | JsonDiff String
-    | UserRequestedDiff
+    | UserRequestedDiff --(Result Http.Error ())
+    | ServerReturnedDiff (Result Http.Error String)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -73,7 +75,24 @@ update msg model =
             ( { model | jsonDiff = s }, Cmd.none )
 
         UserRequestedDiff ->
-            ( { model | jsonDiff = "This will come from the server" }, Cmd.none )
+            ( { model | jsonDiff = "This will come from the server" }
+            , Http.get
+                { url = "http://localhost:4000/diff"
+                , expect = Http.expectString ServerReturnedDiff
+                }
+            )
+
+        ServerReturnedDiff result ->
+            case result of
+                Ok fullText ->
+                    ( { model | jsonDiff = fullText }, Cmd.none )
+
+                Err error ->
+                    let
+                        _ =
+                            Debug.log "Error is" error
+                    in
+                    ( { model | jsonDiff = "got error" }, Cmd.none )
 
 
 
@@ -118,8 +137,7 @@ jsonDiffElement jsonDiff =
         , Border.color lightCharcoal
         , padding 3
         ]
-        [
-         text jsonDiff --Need to make this a variable call
+        [ text jsonDiff --Need to make this a variable call
         ]
 
 

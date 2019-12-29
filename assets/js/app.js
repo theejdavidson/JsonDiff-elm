@@ -2,6 +2,7 @@
 // The MiniCssExtractPlugin is used to separate it out into
 // its own CSS file.
 import css from "../css/app.css"
+import "../elm/src/main.css"
 
 // webpack automatically bundles all modules in your
 // entry points. Those entry points can be configured
