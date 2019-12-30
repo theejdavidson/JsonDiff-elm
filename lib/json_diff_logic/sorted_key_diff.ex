@@ -63,6 +63,13 @@ defmodule JsonDiffLogic.SortedKeyDiff do
         end
       end)
 
+      result = %{
+        matched_pairs: Enum.sort(result.matched_pairs),
+        mismatched_values: Enum.sort(result.mismatched_values),
+        missing_from_a: Enum.sort(result.missing_from_a),
+        missing_from_b: Enum.sort(result.missing_from_b)
+      }
+
     Logger.info("Reduced to #{inspect(result, pretty: true)}")
 
     result

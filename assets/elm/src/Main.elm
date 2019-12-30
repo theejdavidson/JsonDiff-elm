@@ -249,14 +249,18 @@ jsonDiffElement sortedKeyDiff =
 matchingContent listOfMatchedValues =
     Element.html
         (Html.table []
-            [ Html.tbody [ Html.Attributes.style "width" "100%" ]
-                (List.map matchingContentRow listOfMatchedValues)
+            [ Html.tbody []
+                ([ Html.tr []
+                    [ Html.th [] [ Html.text "Key" ], Html.th [] [ Html.text "Value" ] ]
+                 ]
+                    ++ List.map matchingContentRow listOfMatchedValues
+                )
             ]
         )
 
 
 matchingContentRow matchedValue =
-    Html.tr []
+    Html.tr [ Html.Attributes.align "left" ]
         [ Html.td
             [ Html.Attributes.style "background-color" "salmon"
             , Html.Attributes.style "width" "50%"
@@ -271,7 +275,7 @@ matchingContentRow matchedValue =
 
 
 mismatchedValueRow mismatchedValue =
-    Html.tr []
+    Html.tr [ Html.Attributes.align "left" ]
         [ Html.td
             [ Html.Attributes.style "background-color" "salmon"
             , Html.Attributes.style "width" "50%"
@@ -293,8 +297,12 @@ mismatchedValueRow mismatchedValue =
 mismatchedContent listOfMismatchedValues =
     Element.html
         (Html.table []
-            [ Html.tbody [ Html.Attributes.style "width" "100%" ]
-                (List.map mismatchedValueRow listOfMismatchedValues)
+            [ Html.tbody []
+                ([ Html.tr []
+                    [ Html.th [] [ Html.text "Key" ], Html.th [] [ Html.text "A Value" ], Html.th [] [ Html.text "B Value" ] ]
+                 ]
+                    ++ List.map mismatchedValueRow listOfMismatchedValues
+                )
             ]
         )
 
