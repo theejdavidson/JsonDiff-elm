@@ -10,7 +10,8 @@ import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes exposing (src)
 import Http
-import Json.Decode exposing (Decoder, decodeString, field, int, list, string)
+import Json.Decode exposing (Decoder, field, list, map2, string, value)
+import Json.Encode exposing (Value)
 
 
 
@@ -51,26 +52,54 @@ subscriptions model =
 ---- UPDATE ----
 
 
+areEqual : Value -> Value -> Bool
+areEqual a b =
+    a == b
+
+
 type Msg
     = NoOp
     | JsonTextA String
     | JsonTextB String
     | JsonDiff String
     | UserRequestedDiff --(Result Http.Error ())
-    | ServerReturnedDiff (Result Http.Error (List Int))
+    | ServerReturnedDiff (Result Http.Error SortedKeyDiff)
 
 
-sortedKeyDiffDecoder: Decoder (List Int)
-sortedKeyDiffDecoder = list int
--- sortedKeyDiffDecoder : Decoder String
--- sortedKeyDiffDecoder =
---     case decodeString (list int) of
---         Ok listOfInt ->
---             --Debug.toString listOfInt
---             "Boo"
+type alias MatchedPair =
+    { key : String
+    , value : Value
+    }
 
---         Err _ ->
---             "Oops"
+
+type alias SortedKeyDiff =
+    { matched_pairs : List MatchedPair }
+
+
+type alias MissingValue =
+    { key : String
+    , value : String
+    }
+
+
+matchedPairDecoder : Decoder MatchedPair
+matchedPairDecoder =
+    let
+        _ =
+           -- Debug.log "Simple value:" (Json.Encode.int 3)
+            Debug.log "2 == 3?" (areEqual (Json.Encode.int 3) (Json.Encode.int 3)) 
+    in
+    map2
+        MatchedPair
+        (field "key" string)
+        (field "value" value)
+
+
+sortedKeyDiffDecoder : Decoder SortedKeyDiff
+sortedKeyDiffDecoder =
+    Json.Decode.map
+        SortedKeyDiff
+        (field "matched_pairs" (list matchedPairDecoder))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
