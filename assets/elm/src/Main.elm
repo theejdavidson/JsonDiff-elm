@@ -10,7 +10,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes exposing (src)
 import Http
-import Json.Decode exposing (Decoder, field, list, map2, string, value)
+import Json.Decode exposing (Decoder, field, list, map2, map3, map4, string, value)
 import Json.Encode exposing (Value)
 
 
@@ -71,15 +71,17 @@ type alias MatchedPair =
     , value : Value
     }
 
+type alias MatchedKey =
+    { key : String
+    , value_a : Value
+    , value_b : Value
+    }
 
 type alias SortedKeyDiff =
-    { matched_pairs : List MatchedPair }
-
-
-type alias MissingValue =
-    { key : String
-    , value : String
-    }
+    { matched_pairs : List MatchedPair
+    , matched_keys : List MatchedKey
+    , missing_from_a : List MatchedPair
+    , missing_from_b : List MatchedPair }
 
 
 matchedPairDecoder : Decoder MatchedPair
@@ -94,12 +96,23 @@ matchedPairDecoder =
         (field "key" string)
         (field "value" value)
 
+matchedKeyDecoder : Decoder MatchedKey
+matchedKeyDecoder =
+    map3
+        MatchedKey
+        (field "key" string)
+        (field "value_a" value)
+        (field "value_b" value)
+
 
 sortedKeyDiffDecoder : Decoder SortedKeyDiff
 sortedKeyDiffDecoder =
-    Json.Decode.map
+    map4
         SortedKeyDiff
         (field "matched_pairs" (list matchedPairDecoder))
+        (field "matched_keys" (list matchedKeyDecoder))
+        (field "missing_from_a" (list matchedPairDecoder))
+        (field "missing_from_b" (list matchedPairDecoder))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
