@@ -181,7 +181,7 @@ view model =
     { title = "JsonDiff"
     , body =
         [ layout [] <|
-            column [ width fill, spacingXY 0 20 ]
+            column [ width fill, spacingXY 50 20 ]
                 [ jsonInput model
                 ]
         ]
@@ -191,8 +191,9 @@ view model =
 jsonInput : Model -> Element Msg
 jsonInput model =
     column
-        [ width (px 600)
-        , spacingXY 0 10
+        [ width fill
+        , padding 20
+        , spacingXY 10 10
         , centerX
         ]
         [ jsonTextElementA model.jsonTextA
