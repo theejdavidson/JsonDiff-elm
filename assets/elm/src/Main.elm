@@ -8,10 +8,11 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Html
 import Html.Attributes exposing (src)
 import Http
 import Json.Decode exposing (Decoder, field, list, map2, map3, map4, string, value)
-import Json.Encode exposing (Value)
+import Json.Encode exposing (Value, encode)
 
 
 
@@ -21,7 +22,7 @@ import Json.Encode exposing (Value)
 type alias Model =
     { jsonTextA : String
     , jsonTextB : String
-    , jsonDiff : String
+    , sortedKeyDiff : Maybe SortedKeyDiff
     }
 
 
@@ -33,7 +34,7 @@ init : Flags -> ( Model, Cmd Msg )
 init _ =
     ( { jsonTextA = "<Paste first JSON text here>"
       , jsonTextB = "<Paste second JSON text here>"
-      , jsonDiff = "Json Diff"
+      , sortedKeyDiff = Nothing
       }
     , Cmd.none
     )
@@ -57,11 +58,15 @@ areEqual a b =
     a == b
 
 
+valueToString : Value -> String
+valueToString value =
+    Json.Encode.encode 0 value
+
+
 type Msg
     = NoOp
     | JsonTextA String
     | JsonTextB String
-    | JsonDiff String
     | UserRequestedDiff --(Result Http.Error ())
     | ServerReturnedDiff (Result Http.Error SortedKeyDiff)
 
@@ -71,35 +76,54 @@ type alias MatchedPair =
     , value : Value
     }
 
-type alias MatchedKey =
+
+type alias MismatchedValue =
     { key : String
     , value_a : Value
     , value_b : Value
     }
 
+
 type alias SortedKeyDiff =
     { matched_pairs : List MatchedPair
-    , matched_keys : List MatchedKey
+    , mismatched_value : List MismatchedValue --keys match but values are mismatched
     , missing_from_a : List MatchedPair
-    , missing_from_b : List MatchedPair }
+    , missing_from_b : List MatchedPair
+    }
+
+
+aMatchedPair =
+    { key = "Foo"
+    , value = ""
+    }
+
+
+getMatchedPairs sortedDiffKey =
+    sortedDiffKey.matched_pairs
+
+
+
+--sortedKeyDiffSample = { ["key1" : 1, "key2" : 2]}
 
 
 matchedPairDecoder : Decoder MatchedPair
 matchedPairDecoder =
     let
         _ =
-           -- Debug.log "Simple value:" (Json.Encode.int 3)
-            Debug.log "2 == 3?" (areEqual (Json.Encode.int 3) (Json.Encode.int 3)) 
+            Debug.log "Simple value:" (valueToString (Json.Encode.int 3))
+
+        -- Debug.log "2 == 3?" (areEqual (Json.Encode.int 3) (Json.Encode.int 3))
     in
     map2
         MatchedPair
         (field "key" string)
         (field "value" value)
 
-matchedKeyDecoder : Decoder MatchedKey
+
+matchedKeyDecoder : Decoder MismatchedValue
 matchedKeyDecoder =
     map3
-        MatchedKey
+        MismatchedValue
         (field "key" string)
         (field "value_a" value)
         (field "value_b" value)
@@ -127,11 +151,8 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        JsonDiff s ->
-            ( { model | jsonDiff = s }, Cmd.none )
-
         UserRequestedDiff ->
-            ( { model | jsonDiff = "This will come from the server" }
+            ( model
             , Http.get
                 { url = "http://localhost:4000/sorted-key-diff"
                 , expect = Http.expectJson ServerReturnedDiff sortedKeyDiffDecoder
@@ -140,15 +161,15 @@ update msg model =
 
         ServerReturnedDiff result ->
             case result of
-                Ok fullText ->
-                    ( { model | jsonDiff = Debug.toString fullText }, Cmd.none )
+                Ok sortedKeyDiff ->
+                    ( { model | sortedKeyDiff = Just sortedKeyDiff }, Cmd.none )
 
                 Err error ->
                     let
                         _ =
                             Debug.log "Error is" error
                     in
-                    ( { model | jsonDiff = "got error" }, Cmd.none )
+                    ( { model | sortedKeyDiff = Nothing }, Cmd.none )
 
 
 
@@ -180,12 +201,17 @@ jsonInput model =
             { onPress = Just UserRequestedDiff
             , label = Element.text "Diff"
             }
-        , jsonDiffElement model.jsonDiff
+        , case model.sortedKeyDiff of
+            Just sortedKeyDiff ->
+                jsonDiffElement sortedKeyDiff
+
+            Nothing ->
+                text "No content yet"
         ]
 
 
-jsonDiffElement : String -> Element Msg
-jsonDiffElement jsonDiff =
+jsonDiffElement : SortedKeyDiff -> Element Msg
+jsonDiffElement sortedKeyDiff =
     Element.paragraph
         [ height (px 300)
         , Border.width 1
@@ -193,8 +219,86 @@ jsonDiffElement jsonDiff =
         , Border.color lightCharcoal
         , padding 3
         ]
-        [ text jsonDiff --Need to make this a variable call
+        [ text (Debug.toString sortedKeyDiff)
+        , Element.html (Html.h3 [] [ Html.text "Mismatched Content" ])
+        , mismatchedContent sortedKeyDiff.mismatched_value
+        , Element.html (Html.h3 [] [ Html.text "Missing from A" ])
+        , matchingContent
+        , Element.html (Html.h3 [] [ Html.text "Missing from B" ])
+        , matchingContent
+        , Element.html (Html.h3 [] [ Html.text "Matching Key/Value Pairs" ])
+        , matchingContent
         ]
+
+
+type alias Person =
+    { firstName : String
+    , lastName : String
+    }
+
+
+persons : List Person
+persons =
+    [ { firstName = "David"
+      , lastName = "Bowie"
+      }
+    , { firstName = "Florence"
+      , lastName = "Welch"
+      }
+    ]
+
+
+matchingContent =
+    Element.html
+        (Html.table []
+            [ Html.tbody [ Html.Attributes.style "width" "30%" ]
+                [ Html.tr []
+                    [ Html.td [ Html.Attributes.style "background-color" "salmon" ] [ Html.text "Data fjkdslf dlsa fjdklsa fjdklsa jfklds fjdklsa jfkldsaj f 1" ]
+                    , Html.td
+                        [ Html.Attributes.style "background-color" "lightblue"
+                        , Html.Attributes.style "width" "30%"
+                        ]
+                        [ Html.text "Data 2" ]
+                    ]
+                ]
+            , Html.tr []
+                [ Html.td [ Html.Attributes.style "background-color" "salmon" ] [ Html.text "Data fjkdslf dlsa fjdklsa fjdklsa jfklds fjdklsa jfkldsaj f 1" ]
+                , Html.td
+                    [ Html.Attributes.style "background-color" "lightblue"
+                    , Html.Attributes.style "width" "30%"
+                    ]
+                    [ Html.text "Data 4" ]
+                ]
+            ]
+        )
+
+
+mismatchedValueRow mismatchedValue =
+    [ Html.td
+        [ Html.Attributes.style "background-color" "salmon"
+        , Html.Attributes.style "width" "50%"
+        ]
+        [ Html.text mismatchedValue.key ]
+    , Html.td
+        [ Html.Attributes.style "background-color" "lightblue"
+        , Html.Attributes.style "width" "30%"
+        ]
+        [ Html.text (Json.Encode.encode 0 mismatchedValue.value_a) ]
+    , Html.td
+        [ Html.Attributes.style "background-color" "lightyellow"
+        , Html.Attributes.style "width" "30%"
+        ]
+        [ Html.text (Json.Encode.encode 0 mismatchedValue.value_b) ]
+    ]
+
+
+mismatchedContent listOfMismatchedValues =
+    Element.html
+        (Html.table []
+            [ Html.tbody [ Html.Attributes.style "width" "70%" ]
+                (List.concat (List.map mismatchedValueRow listOfMismatchedValues))
+            ]
+        )
 
 
 jsonTextElementA : String -> Element Msg
