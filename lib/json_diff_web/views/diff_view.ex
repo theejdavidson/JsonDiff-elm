@@ -1,3 +1,3 @@
 defmodule JsonDiffWeb.DiffView do
-    use JsonDiffWeb, :view
+  use JsonDiffWeb, :view
 end

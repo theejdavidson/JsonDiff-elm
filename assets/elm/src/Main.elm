@@ -1,7 +1,5 @@
 module Main exposing (..)
 
---import Html as HTML exposing (Html, button, div, h1, img, text)
-
 import Browser
 import Element exposing (..)
 import Element.Background as Background
@@ -10,9 +8,9 @@ import Element.Font as Font
 import Element.Input as Input
 import Html
 import Html.Attributes exposing (src)
-import Http
+import Http exposing (Body, jsonBody)
 import Json.Decode exposing (Decoder, field, list, map2, map3, map4, string, value)
-import Json.Encode exposing (Value, encode)
+import Json.Encode exposing (Value, encode, object)
 
 
 
@@ -32,8 +30,8 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-    ( { jsonTextA = "<Paste first JSON text here>"
-      , jsonTextB = "<Paste second JSON text here>"
+    ( { jsonTextA = ""
+      , jsonTextB = ""
       , sortedKeyDiff = Nothing
       }
     , Cmd.none
@@ -106,6 +104,16 @@ getMatchedPairs sortedDiffKey =
 --sortedKeyDiffSample = { ["key1" : 1, "key2" : 2]}
 
 
+encodeBody : String -> String -> Body
+encodeBody jsonTextA jsonTextB =
+    jsonBody
+        (object
+            [ ( "jsonTextA", Json.Encode.string jsonTextA )
+            , ( "jsonTextB", Json.Encode.string jsonTextB )
+            ]
+        )
+
+
 matchedPairDecoder : Decoder MatchedPair
 matchedPairDecoder =
     let
@@ -153,8 +161,9 @@ update msg model =
 
         UserRequestedDiff ->
             ( model
-            , Http.get
-                { url = "http://localhost:4000/sorted-key-diff"
+            , Http.post
+                { url = "http://localhost:4000/api/sorted-key-diff"
+                , body = encodeBody model.jsonTextA model.jsonTextB
                 , expect = Http.expectJson ServerReturnedDiff sortedKeyDiffDecoder
                 }
             )
@@ -214,7 +223,7 @@ jsonInput model =
 jsonDiffElement : SortedKeyDiff -> Element Msg
 jsonDiffElement sortedKeyDiff =
     Element.column
-        [ ]
+        []
         [ Element.html (Html.h3 [] [ Html.text "Mismatched Content" ])
         , mismatchedContent sortedKeyDiff.mismatched_value
         , Element.html (Html.h3 [] [ Html.text "Missing from A" ])
@@ -234,38 +243,40 @@ matchingContent listOfMatchedValues =
             ]
         )
 
+
 matchingContentRow matchedValue =
     Html.tr []
-    [ Html.td
-        [ Html.Attributes.style "background-color" "salmon"
-        , Html.Attributes.style "width" "50%"
+        [ Html.td
+            [ Html.Attributes.style "background-color" "salmon"
+            , Html.Attributes.style "width" "50%"
+            ]
+            [ Html.text matchedValue.key ]
+        , Html.td
+            [ Html.Attributes.style "background-color" "lightblue"
+            , Html.Attributes.style "width" "30%"
+            ]
+            [ Html.text (Json.Encode.encode 0 matchedValue.value) ]
         ]
-        [ Html.text matchedValue.key ]
-    , Html.td
-        [ Html.Attributes.style "background-color" "lightblue"
-        , Html.Attributes.style "width" "30%"
-        ]
-        [ Html.text (Json.Encode.encode 0 matchedValue.value) ]
-    ]
+
 
 mismatchedValueRow mismatchedValue =
     Html.tr []
-    [ Html.td
-        [ Html.Attributes.style "background-color" "salmon"
-        , Html.Attributes.style "width" "50%"
+        [ Html.td
+            [ Html.Attributes.style "background-color" "salmon"
+            , Html.Attributes.style "width" "50%"
+            ]
+            [ Html.text mismatchedValue.key ]
+        , Html.td
+            [ Html.Attributes.style "background-color" "lightblue"
+            , Html.Attributes.style "width" "30%"
+            ]
+            [ Html.text (Json.Encode.encode 0 mismatchedValue.value_a) ]
+        , Html.td
+            [ Html.Attributes.style "background-color" "lightyellow"
+            , Html.Attributes.style "width" "30%"
+            ]
+            [ Html.text (Json.Encode.encode 0 mismatchedValue.value_b) ]
         ]
-        [ Html.text mismatchedValue.key ]
-    , Html.td
-        [ Html.Attributes.style "background-color" "lightblue"
-        , Html.Attributes.style "width" "30%"
-        ]
-        [ Html.text (Json.Encode.encode 0 mismatchedValue.value_a) ]
-    , Html.td
-        [ Html.Attributes.style "background-color" "lightyellow"
-        , Html.Attributes.style "width" "30%"
-        ]
-        [ Html.text (Json.Encode.encode 0 mismatchedValue.value_b) ]
-    ]
 
 
 mismatchedContent listOfMismatchedValues =

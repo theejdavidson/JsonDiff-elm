@@ -34,9 +34,10 @@ defmodule IntegrationSuite do
       right_json = File.read!(Path.join(@root, right))
 
       functions
-      |> Enum.map(fn {function_name, diff_function}->
+      |> Enum.map(fn {function_name, diff_function} ->
         Logger.info("Calling #{inspect(diff_function)} on #{left_json}, #{right_json}")
         result = diff_function.(left_json, right_json)
+
         File.write!(
           Path.join([@root, "test_diff_results", "#{concept}.#{function_name}.result.json"]),
           inspect(result, pretty: true)

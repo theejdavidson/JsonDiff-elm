@@ -4,10 +4,9 @@ defmodule JsonDiffLogic.SimpleDiff do
   def diff(nil, _a), do: :todo
   def diff(_a, nil), do: :todo
 
-
-
   def diff(json_a, json_b) when is_binary(json_a) and is_binary(json_b) do
-    IO.puts "Diffing #{json_a} vs #{json_b}"
+    IO.puts("Diffing #{json_a} vs #{json_b}")
+
     if(json_a == json_b) do
       :same
     else

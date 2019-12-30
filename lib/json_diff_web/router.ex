@@ -22,7 +22,9 @@ defmodule JsonDiffWeb.Router do
   end
 
   # Other scopes may use custom stacks.
-  # scope "/api", JsonDiffWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", JsonDiffWeb do
+    pipe_through :api
+
+    post "/sorted-key-diff", SortedKeyDiffController, :sorted_key_diff
+  end
 end
