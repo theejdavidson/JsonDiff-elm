@@ -30,8 +30,18 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-    ( { jsonTextA = ""
-      , jsonTextB = ""
+    ( { jsonTextA = """{
+    "street_address": "1232 Martin Luthor King Dr",
+    "zip": 60323,
+    "city": "Smallville",
+    "country": "USA"
+}"""
+      , jsonTextB = """{
+    "street_address": "1232 Martin Luthor King Dr",
+    "apt" : 40,
+    "zip": 60323,
+    "city": "Bigville"
+}"""
       , sortedKeyDiff = Nothing
       }
     , Cmd.none

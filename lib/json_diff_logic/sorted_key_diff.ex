@@ -1,38 +1,37 @@
 defmodule JsonDiffLogic.SortedKeyDiff do
-  def diff(nil, nil), do: :same
+  import JsonDiffLogic.JsonDiffHelpers
+  def diff(jsonTextA, jsonTextB) do
+    {parsedA, parsedB} = parse_json_strings(jsonTextA, jsonTextB)
 
-  def diff(nil, _a), do: :todo
-  def diff(_a, nil), do: :todo
+    a = recursive_flatten(parsedA)
+    b = recursive_flatten(parsedB)
 
-  def diff(json_a, json_b) when is_binary(json_a) and is_binary(json_b) do
-    if(json_a == json_b) do
-      :same
-    else
-      json_a <> json_b
-    end
-  end
-
-  def diff(json_a, json_b) when is_number(json_a) and is_number(json_b) do
-    if(json_a == json_b) do
-      :same
-    else
-      json_a + json_b
-    end
-  end
-
-  def diff(json_a, json_b) when is_map(json_a) and is_map(json_b) do
-    if(json_a == json_b) do
-      :same
-    else
-      Map.merge(json_a, json_b)
-    end
-  end
-
-  def diff(json_a, json_b) when is_boolean(json_a) and is_boolean(json_b) do
-    if(json_a == json_b) do
-      :same
-    else
-      json_a || json_b
-    end
+    %{
+      matched_pairs: [
+        %{
+          key: "street_address",
+          # value: "1232 Martin Luthor King Dr"
+          value: 1232
+        }
+      ],
+      mismatched_values: [
+        %{
+          key: "city",
+          value_a: "Smallville",
+          value_b: "Bigville"
+        },
+        %{
+          key: "street",
+          value_a: "Smallville2",
+          value_b: "Bigville2"
+        }
+      ],
+      missing_from_a: [
+        %{key: "aValue", value: "Foo"}
+      ],
+      missing_from_b: [
+        %{key: "bValue", value: "Bar"}
+      ]
+    }
   end
 end

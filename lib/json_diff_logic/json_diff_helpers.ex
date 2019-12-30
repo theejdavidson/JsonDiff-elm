@@ -80,6 +80,8 @@ defmodule JsonDiffLogic.JsonDiffHelpers do
       iex>ExJsonDiff.is_scalar(%{a: "A", b: "B"})
       false
   """
+  def is_scalar(nil), do: true
+  
   def is_scalar(parsed) when is_number(parsed), do: true
 
   def is_scalar(parsed) when is_boolean(parsed), do: true
