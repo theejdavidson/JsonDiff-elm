@@ -10,6 +10,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes exposing (src)
 import Http
+import Json.Decode exposing (Decoder, decodeString, field, int, list, string)
 
 
 
@@ -56,7 +57,20 @@ type Msg
     | JsonTextB String
     | JsonDiff String
     | UserRequestedDiff --(Result Http.Error ())
-    | ServerReturnedDiff (Result Http.Error String)
+    | ServerReturnedDiff (Result Http.Error (List Int))
+
+
+sortedKeyDiffDecoder: Decoder (List Int)
+sortedKeyDiffDecoder = list int
+-- sortedKeyDiffDecoder : Decoder String
+-- sortedKeyDiffDecoder =
+--     case decodeString (list int) of
+--         Ok listOfInt ->
+--             --Debug.toString listOfInt
+--             "Boo"
+
+--         Err _ ->
+--             "Oops"
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -77,15 +91,15 @@ update msg model =
         UserRequestedDiff ->
             ( { model | jsonDiff = "This will come from the server" }
             , Http.get
-                { url = "http://localhost:4000/diff"
-                , expect = Http.expectString ServerReturnedDiff
+                { url = "http://localhost:4000/sorted-key-diff"
+                , expect = Http.expectJson ServerReturnedDiff sortedKeyDiffDecoder
                 }
             )
 
         ServerReturnedDiff result ->
             case result of
                 Ok fullText ->
-                    ( { model | jsonDiff = fullText }, Cmd.none )
+                    ( { model | jsonDiff = Debug.toString fullText }, Cmd.none )
 
                 Err error ->
                     let
@@ -114,13 +128,13 @@ view model =
 jsonInput : Model -> Element Msg
 jsonInput model =
     column
-        [ width (px 800)
+        [ width (px 600)
         , spacingXY 0 10
         , centerX
         ]
         [ jsonTextElementA model.jsonTextA
         , jsonTextElementB model.jsonTextB
-        , Input.button [ Background.color (Element.rgb255 238 238 238) ]
+        , Input.button [ centerX, Background.color (Element.rgb255 238 238 238) ]
             { onPress = Just UserRequestedDiff
             , label = Element.text "Diff"
             }
@@ -180,8 +194,6 @@ jsonTextElementB jsonTextB =
 
 
 
---diffOutput : Model -> Element Msg
---diffOutput :
 ---- PROGRAM ----
 
 
