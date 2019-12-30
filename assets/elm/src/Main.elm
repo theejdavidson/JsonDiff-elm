@@ -67,7 +67,7 @@ type Msg
     = NoOp
     | JsonTextA String
     | JsonTextB String
-    | UserRequestedDiff --(Result Http.Error ())
+    | UserRequestedDiff
     | ServerReturnedDiff (Result Http.Error SortedKeyDiff)
 
 
@@ -120,8 +120,8 @@ matchedPairDecoder =
         (field "value" value)
 
 
-matchedKeyDecoder : Decoder MismatchedValue
-matchedKeyDecoder =
+mismatchedValueDecoder : Decoder MismatchedValue
+mismatchedValueDecoder =
     map3
         MismatchedValue
         (field "key" string)
@@ -134,7 +134,7 @@ sortedKeyDiffDecoder =
     map4
         SortedKeyDiff
         (field "matched_pairs" (list matchedPairDecoder))
-        (field "matched_keys" (list matchedKeyDecoder))
+        (field "mismatched_values" (list mismatchedValueDecoder))
         (field "missing_from_a" (list matchedPairDecoder))
         (field "missing_from_b" (list matchedPairDecoder))
 
@@ -212,68 +212,43 @@ jsonInput model =
 
 jsonDiffElement : SortedKeyDiff -> Element Msg
 jsonDiffElement sortedKeyDiff =
-    Element.paragraph
-        [ height (px 300)
-        , Border.width 1
-        , Border.rounded 3
-        , Border.color lightCharcoal
-        , padding 3
-        ]
-        [ text (Debug.toString sortedKeyDiff)
-        , Element.html (Html.h3 [] [ Html.text "Mismatched Content" ])
+    Element.column
+        [ ]
+        [ Element.html (Html.h3 [] [ Html.text "Mismatched Content" ])
         , mismatchedContent sortedKeyDiff.mismatched_value
         , Element.html (Html.h3 [] [ Html.text "Missing from A" ])
-        , matchingContent
+        , matchingContent sortedKeyDiff.missing_from_a
         , Element.html (Html.h3 [] [ Html.text "Missing from B" ])
-        , matchingContent
+        , matchingContent sortedKeyDiff.missing_from_b
         , Element.html (Html.h3 [] [ Html.text "Matching Key/Value Pairs" ])
-        , matchingContent
+        , matchingContent sortedKeyDiff.matched_pairs
         ]
 
 
-type alias Person =
-    { firstName : String
-    , lastName : String
-    }
-
-
-persons : List Person
-persons =
-    [ { firstName = "David"
-      , lastName = "Bowie"
-      }
-    , { firstName = "Florence"
-      , lastName = "Welch"
-      }
-    ]
-
-
-matchingContent =
+matchingContent listOfMatchedValues =
     Element.html
         (Html.table []
-            [ Html.tbody [ Html.Attributes.style "width" "30%" ]
-                [ Html.tr []
-                    [ Html.td [ Html.Attributes.style "background-color" "salmon" ] [ Html.text "Data fjkdslf dlsa fjdklsa fjdklsa jfklds fjdklsa jfkldsaj f 1" ]
-                    , Html.td
-                        [ Html.Attributes.style "background-color" "lightblue"
-                        , Html.Attributes.style "width" "30%"
-                        ]
-                        [ Html.text "Data 2" ]
-                    ]
-                ]
-            , Html.tr []
-                [ Html.td [ Html.Attributes.style "background-color" "salmon" ] [ Html.text "Data fjkdslf dlsa fjdklsa fjdklsa jfklds fjdklsa jfkldsaj f 1" ]
-                , Html.td
-                    [ Html.Attributes.style "background-color" "lightblue"
-                    , Html.Attributes.style "width" "30%"
-                    ]
-                    [ Html.text "Data 4" ]
-                ]
+            [ Html.tbody [ Html.Attributes.style "width" "100%" ]
+                (List.map matchingContentRow listOfMatchedValues)
             ]
         )
 
+matchingContentRow matchedValue =
+    Html.tr []
+    [ Html.td
+        [ Html.Attributes.style "background-color" "salmon"
+        , Html.Attributes.style "width" "50%"
+        ]
+        [ Html.text matchedValue.key ]
+    , Html.td
+        [ Html.Attributes.style "background-color" "lightblue"
+        , Html.Attributes.style "width" "30%"
+        ]
+        [ Html.text (Json.Encode.encode 0 matchedValue.value) ]
+    ]
 
 mismatchedValueRow mismatchedValue =
+    Html.tr []
     [ Html.td
         [ Html.Attributes.style "background-color" "salmon"
         , Html.Attributes.style "width" "50%"
@@ -295,8 +270,8 @@ mismatchedValueRow mismatchedValue =
 mismatchedContent listOfMismatchedValues =
     Element.html
         (Html.table []
-            [ Html.tbody [ Html.Attributes.style "width" "70%" ]
-                (List.concat (List.map mismatchedValueRow listOfMismatchedValues))
+            [ Html.tbody [ Html.Attributes.style "width" "100%" ]
+                (List.map mismatchedValueRow listOfMismatchedValues)
             ]
         )
 

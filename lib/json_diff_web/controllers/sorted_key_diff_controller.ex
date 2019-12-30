@@ -14,11 +14,16 @@ defmodule JsonDiffWeb.SortedKeyDiffController do
             value: 1232
           }
         ],
-        matched_keys: [
+        mismatched_values: [
           %{
             key: "city",
             value_a: "Smallville",
             value_b: "Bigville"
+          },
+          %{
+            key: "street",
+            value_a: "Smallville2",
+            value_b: "Bigville2"
           }
         ],
         missing_from_a: [
