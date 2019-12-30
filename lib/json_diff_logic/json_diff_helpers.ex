@@ -81,7 +81,7 @@ defmodule JsonDiffLogic.JsonDiffHelpers do
       false
   """
   def is_scalar(nil), do: true
-  
+
   def is_scalar(parsed) when is_number(parsed), do: true
 
   def is_scalar(parsed) when is_boolean(parsed), do: true

@@ -37,7 +37,8 @@ init _ =
     "country": "USA"
 }"""
       , jsonTextB = """{
-    "street_address": "1232 Martin Luthor King Dr",
+    "street_address":
+    { "name" : "Martin Luthor King Dr", "number" : 1323 },
     "apt" : 40,
     "zip": 60323,
     "city": "Bigville"

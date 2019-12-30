@@ -1,37 +1,70 @@
 defmodule JsonDiffLogic.SortedKeyDiff do
   import JsonDiffLogic.JsonDiffHelpers
+  require Logger
+
+  def to_pair(path, value) do
+    %{
+      key: Enum.join(path, "."),
+      value: value
+    }
+  end
+
   def diff(jsonTextA, jsonTextB) do
     {parsedA, parsedB} = parse_json_strings(jsonTextA, jsonTextB)
 
     a = recursive_flatten(parsedA)
     b = recursive_flatten(parsedB)
 
-    %{
-      matched_pairs: [
+    Logger.info("a is\n #{inspect(a, pretty: true)}\nb is\n#{inspect(b, pretty: true)}")
+
+    result =
+      a
+      |> Enum.reduce(
         %{
-          key: "street_address",
-          # value: "1232 Martin Luthor King Dr"
-          value: 1232
-        }
-      ],
-      mismatched_values: [
-        %{
-          key: "city",
-          value_a: "Smallville",
-          value_b: "Bigville"
+          matched_pairs: [],
+          mismatched_values: [],
+          missing_from_a: [],
+          missing_from_b: []
         },
-        %{
-          key: "street",
-          value_a: "Smallville2",
-          value_b: "Bigville2"
-        }
-      ],
-      missing_from_a: [
-        %{key: "aValue", value: "Foo"}
-      ],
-      missing_from_b: [
-        %{key: "bValue", value: "Bar"}
-      ]
-    }
+        fn {path, a_value}, acc ->
+          cond do
+            Map.has_key?(b, path) ->
+              b_value = Map.get(b, path)
+
+              if(b_value == a_value) do
+                %{acc | matched_pairs: [to_pair(path, a_value) | acc.matched_pairs]}
+              else
+                %{
+                  acc
+                  | mismatched_values: [
+                      %{
+                        key: Enum.join(path, "."),
+                        value_a: a_value,
+                        value_b: b_value
+                      }
+                      | acc.mismatched_values
+                    ]
+                }
+              end
+
+            true ->
+              %{acc | missing_from_b: [to_pair(path, a_value) | acc.missing_from_b]}
+          end
+        end
+      )
+
+    result =
+      b
+      |> Enum.reduce(result, fn {path, b_value}, acc ->
+        if(Map.has_key?(a, path)) do
+          acc
+        else
+          %{acc | missing_from_a: [to_pair(path, b_value) | acc.missing_from_a]}
+        end
+      end)
+
+    Logger.info("Reduced to #{inspect(result, pretty: true)}")
+
+    result
   end
 end

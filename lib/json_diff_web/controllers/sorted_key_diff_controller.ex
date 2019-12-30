@@ -46,10 +46,7 @@ defmodule JsonDiffWeb.SortedKeyDiffController do
     |> put_resp_content_type("application/json")
     |> send_resp(
       200,
-      Jason.encode!(
-        JsonDiffLogic.SortedKeyDiff.diff(jsonTextA, jsonTextB)
-        
-      )
+      Jason.encode!(JsonDiffLogic.SortedKeyDiff.diff(jsonTextA, jsonTextB))
     )
   end
 end
