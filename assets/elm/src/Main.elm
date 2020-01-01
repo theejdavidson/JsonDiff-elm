@@ -9,7 +9,7 @@ import Element.Input as Input
 import Html
 import Html.Attributes exposing (src)
 import Http exposing (Body, jsonBody)
-import Json.Decode exposing (Decoder, field, list, map2, map3, map4, string, value)
+import Json.Decode exposing (Decoder, fail, field, list, map2, map3, map4, string, value)
 import Json.Encode exposing (Value, encode, object)
 
 
@@ -43,15 +43,17 @@ type
 
 type alias ConsolidatedRow =
     { key : String
-    , value : ConsolidatedValue
+    , row_type : ConsolidatedType
+    , value : Value
+    , other_value : Maybe Value
     }
 
 
-type ConsolidatedValue
-    = ConsolidatedMatchedValue String
-    | ConsolidatedMismatchedValue ( String, String )
-    | ConsolidatedMissingAValue String
-    | ConsolidatedMissingBValue String
+type ConsolidatedType
+    = ConsolidatedMatchedPair
+    | Mismatched
+    | MissingFromA
+    | MissingFromB
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -139,10 +141,6 @@ getMatchedPairs sortedDiffKey =
     sortedDiffKey.matched_pairs
 
 
-
---sortedKeyDiffSample = { ["key1" : 1, "key2" : 2]}
-
-
 encodeBody : String -> String -> Body
 encodeBody jsonTextA jsonTextB =
     jsonBody
@@ -188,6 +186,40 @@ sortedKeyDiffDecoder =
         )
 
 
+consolidatedRowDecoder : Decoder ConsolidatedRow
+consolidatedRowDecoder =
+    map4
+        ConsolidatedRow
+        (field "key" string)
+        (field "row_type" string |> Json.Decode.andThen consolidatedTypeDecoder)
+        (field "value" value)
+        (field "other_value" (Json.Decode.maybe value))
+
+
+consolidatedTypeDecoder typeText =
+    case typeText of
+        "matched_pair" ->
+            Json.Decode.succeed ConsolidatedMatchedPair
+
+        "mismatched" ->
+            Json.Decode.succeed Mismatched
+
+        "missing_from_a" ->
+            Json.Decode.succeed MissingFromA
+
+        "missing_from_b" ->
+            Json.Decode.succeed MissingFromB
+
+        _ ->
+            Json.Decode.fail <| "Unknown theme: " ++ typeText
+
+
+consolidatedDiffDecoder : Decoder DiffType
+consolidatedDiffDecoder =
+    Json.Decode.map Consolidated
+        (list consolidatedRowDecoder)
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -216,18 +248,17 @@ update msg model =
 
                 RbConsolidated ->
                     ( model
-                    , Cmd.none
+                    , Http.post
+                        { url = "http://localhost:4000/api/consolidated-diff"
+                        , body = encodeBody model.jsonTextA model.jsonTextB
+                        , expect = Http.expectJson ServerReturnedDiff consolidatedDiffDecoder
+                        }
                     )
 
         ServerReturnedDiff maybeDiff ->
             case maybeDiff of
                 Ok diff ->
-                    case diff of
-                        SortedKey sortedKeyDiff ->
-                            ( { model | diff = Just diff }, Cmd.none )
-
-                        Consolidated _ ->
-                            ( model, Cmd.none )
+                    ( { model | diff = Just diff }, Cmd.none )
 
                 Err error ->
                     let
@@ -246,16 +277,14 @@ view model =
     { title = "JsonDiff"
     , body =
         [ layout [] <|
-            column [ width fill, spacingXY 50 20 ]
-                [ jsonInput model
-                ]
+            column [] [ jsonInput model, methodSelection model ]
         ]
     }
 
 
 jsonInput : Model -> Element Msg
 jsonInput model =
-    column
+    row
         [ width fill
         , padding 20
         , spacingXY 10 10
@@ -263,35 +292,54 @@ jsonInput model =
         ]
         [ jsonTextElementA model.jsonTextA
         , jsonTextElementB model.jsonTextB
-        , Input.button [ centerX, Background.color lightBlue ]
-            { onPress = Just UserRequestedDiff
-            , label = Element.text "Diff"
-            }
-        , Input.radio [ centerX, Background.color lightBlue ]
+        ]
+
+
+methodSelection : Model -> Element Msg
+methodSelection model =
+    column
+        [ ]
+        [ Input.radio [ padding 10, spacing 10, alignLeft]
             { onChange = \rbDiffType -> RbSelected rbDiffType
             , selected = Just model.rbDiffType
-            , label = Input.labelAbove [] (text "Diff")
+            , label = Input.labelHidden "Diff method"
             , options =
                 [ Input.option RbSortedKey (text "Sorted Key")
                 , Input.option RbConsolidated (text "Consolidated")
                 ]
             }
+        , Input.button [ centerX, Background.color lightBlue ]
+            { onPress = Just UserRequestedDiff
+            , label = Element.text "Diff"
+            }
         , case model.diff of
             Just diff ->
                 case diff of
                     SortedKey sortedKeyDiff ->
-                        jsonDiffElement sortedKeyDiff
+                        sortedKeyDiffElement sortedKeyDiff
 
-                    Consolidated consolidated ->
-                        Element.el [] (Element.text "TODO")
+                    Consolidated consolidatedList ->
+                        consolidatedListElement consolidatedList
 
             Nothing ->
-                text "Inputs must be valid JSON"
+                text ""
         ]
 
 
-jsonDiffElement : SortedKeyDiff -> Element Msg
-jsonDiffElement sortedKeyDiff =
+
+--consolidatedRowElement : ConsolidatedRow -> Element Msg
+--consolidatedRowElement consolidatedRow =
+--  case consolidatedRow.other_value of
+-- Just other_value ->
+
+
+consolidatedListElement : List ConsolidatedRow -> Element Msg
+consolidatedListElement consolidated =
+    Element.el [] (Element.text "")
+
+
+sortedKeyDiffElement : SortedKeyDiff -> Element Msg
+sortedKeyDiffElement sortedKeyDiff =
     Element.column
         []
         [ Element.html (Html.h3 [] [ Html.text "Mismatched Content" ])
@@ -305,69 +353,48 @@ jsonDiffElement sortedKeyDiff =
         ]
 
 
+matchingContent : List MatchedPair -> Element Msg
 matchingContent listOfMatchedValues =
-    Element.html
-        (Html.table []
-            [ Html.tbody []
-                ([ Html.tr []
-                    [ Html.th [] [ Html.text "Key" ], Html.th [] [ Html.text "Value" ] ]
-                 ]
-                    ++ List.map matchingContentRow listOfMatchedValues
-                )
+    Element.table []
+        { data = listOfMatchedValues
+        , columns =
+            [ { header = Element.text "Key"
+              , width = fill
+              , view = \matchedValue -> Element.text matchedValue.key
+              }
+            , { header = Element.text "Value"
+              , width = fill
+              , view = \matchedValue -> Element.text (Json.Encode.encode 0 matchedValue.value)
+              }
             ]
-        )
+        }
 
 
-matchingContentRow matchedValue =
-    Html.tr [ Html.Attributes.align "left" ]
-        [ Html.td
-            [ Html.Attributes.style "background-color" "salmon"
-            , Html.Attributes.style "width" "50%"
-            ]
-            [ Html.text matchedValue.key ]
-        , Html.td
-            [ Html.Attributes.style "background-color" "lightblue"
-            , Html.Attributes.style "width" "30%"
-            ]
-            [ Html.text (Json.Encode.encode 0 matchedValue.value) ]
-        ]
-
-
-mismatchedValueRow mismatchedValue =
-    Html.tr [ Html.Attributes.align "left" ]
-        [ Html.td
-            []
-            [ Html.text mismatchedValue.key ]
-        , Html.td
-            [ Html.Attributes.style "background-color" "lightblue"
-            , Html.Attributes.style "width" "30%"
-            ]
-            [ Html.text (Json.Encode.encode 0 mismatchedValue.value_a) ]
-        , Html.td
-            [ Html.Attributes.style "background-color" "lightyellow"
-            , Html.Attributes.style "width" "30%"
-            ]
-            [ Html.text (Json.Encode.encode 0 mismatchedValue.value_b) ]
-        ]
-
-
+mismatchedContent : List MismatchedValue -> Element Msg
 mismatchedContent listOfMismatchedValues =
-    Element.html
-        (Html.table []
-            [ Html.tbody []
-                ([ Html.tr []
-                    [ Html.th [] [ Html.text "Key" ], Html.th [] [ Html.text "A Value" ], Html.th [] [ Html.text "B Value" ] ]
-                 ]
-                    ++ List.map mismatchedValueRow listOfMismatchedValues
-                )
+    Element.table [ Background.color lightYellow ]
+        { data = listOfMismatchedValues
+        , columns =
+            [ { header = el [ Font.bold, Background.color lightBlue ] (Element.text "Key")
+              , width = fill
+              , view = \mismatchedValue -> el [ Font.alignLeft ] (Element.text mismatchedValue.key)
+              }
+            , { header = el [ Font.bold ] (Element.text "A Value")
+              , width = fill
+              , view = \mismatchedValue -> el [ Font.alignLeft ] (Element.text (Json.Encode.encode 0 mismatchedValue.value_a))
+              }
+            , { header = el [ Font.bold ] (Element.text "B Value")
+              , width = fill
+              , view = \mismatchedValue -> el [ Font.alignLeft ] (Element.text (Json.Encode.encode 0 mismatchedValue.value_b))
+              }
             ]
-        )
+        }
 
 
 jsonTextElementA : String -> Element Msg
 jsonTextElementA jsonTextA =
     Input.multiline
-        [ height (px 300)
+        [ height (px 600)
         , Border.width 1
         , Border.rounded 3
         , Border.color lightCharcoal
@@ -378,7 +405,7 @@ jsonTextElementA jsonTextA =
         , placeholder = Nothing
         , label =
             Input.labelAbove [] <|
-                Element.text "Paste first json text below:"
+                Element.text "Paste JSON text A below:"
         , spellcheck = False
         }
 
@@ -386,7 +413,7 @@ jsonTextElementA jsonTextA =
 jsonTextElementB : String -> Element Msg
 jsonTextElementB jsonTextB =
     Input.multiline
-        [ height (px 300)
+        [ height (px 600)
         , Border.width 1
         , Border.rounded 3
         , Border.color lightCharcoal
@@ -397,7 +424,7 @@ jsonTextElementB jsonTextB =
         , placeholder = Nothing
         , label =
             Input.labelAbove [] <|
-                Element.text "Paste second json text below:"
+                Element.text "Paste JSON text B below:"
         , spellcheck = False
         }
 

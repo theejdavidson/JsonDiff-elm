@@ -2,13 +2,6 @@ defmodule JsonDiffLogic.SortedKeyDiff do
   import JsonDiffLogic.JsonDiffHelpers
   require Logger
 
-  def to_pair(path, value) do
-    %{
-      key: Enum.join(path, "."),
-      value: value
-    }
-  end
-
   def diff(jsonTextA, jsonTextB) do
     {parsedA, parsedB} = parse_json_strings(jsonTextA, jsonTextB)
 

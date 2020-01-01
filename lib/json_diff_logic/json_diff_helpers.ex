@@ -92,6 +92,13 @@ defmodule JsonDiffLogic.JsonDiffHelpers do
 
   def is_scalar(parsed) when is_map(parsed), do: false
 
+  def to_pair(path, value) do
+    %{
+      key: Enum.join(path, "."),
+      value: value
+    }
+  end
+  
   def some_function(a, b, c) do
     IO.puts("a: #{inspect(a)}, b: #{inspect(b)}, c: #{inspect(c)}")
   end

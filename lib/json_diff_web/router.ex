@@ -26,5 +26,6 @@ defmodule JsonDiffWeb.Router do
     pipe_through :api
 
     post "/sorted-key-diff", SortedKeyDiffController, :sorted_key_diff
+    post "/consolidated-diff", ConsolidatedDiffController, :consolidated_diff
   end
 end
