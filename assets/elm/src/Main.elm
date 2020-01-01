@@ -6,8 +6,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Html
-import Html.Attributes exposing (src)
 import Http exposing (Body, jsonBody)
 import Json.Decode exposing (Decoder, fail, field, list, map2, map3, map4, string, value)
 import Json.Encode exposing (Value, encode, object)
@@ -129,16 +127,6 @@ type alias SortedKeyDiff =
     , missing_from_a : List MatchedPair
     , missing_from_b : List MatchedPair
     }
-
-
-aMatchedPair =
-    { key = "Foo"
-    , value = ""
-    }
-
-
-getMatchedPairs sortedDiffKey =
-    sortedDiffKey.matched_pairs
 
 
 encodeBody : String -> String -> Body
@@ -277,7 +265,11 @@ view model =
     { title = "JsonDiff"
     , body =
         [ layout [] <|
-            column [] [ jsonInput model, methodSelection model ]
+            column []
+                [ jsonInput model
+                , methodSelection model
+                , jsonOutput model
+                ]
         ]
     }
 
@@ -287,7 +279,7 @@ jsonInput model =
     row
         [ width fill
         , padding 20
-        , spacingXY 10 10
+        , spacing 20
         , centerX
         ]
         [ jsonTextElementA model.jsonTextA
@@ -298,8 +290,9 @@ jsonInput model =
 methodSelection : Model -> Element Msg
 methodSelection model =
     column
-        [ ]
-        [ Input.radio [ padding 10, spacing 10, alignLeft]
+        [ centerX ]
+        [ Input.radioRow
+            [ spacing 3]
             { onChange = \rbDiffType -> RbSelected rbDiffType
             , selected = Just model.rbDiffType
             , label = Input.labelHidden "Diff method"
@@ -308,22 +301,26 @@ methodSelection model =
                 , Input.option RbConsolidated (text "Consolidated")
                 ]
             }
-        , Input.button [ centerX, Background.color lightBlue ]
+        , Input.button [ centerX, Background.color lightBlue, spacing 10 ]
             { onPress = Just UserRequestedDiff
             , label = Element.text "Diff"
             }
-        , case model.diff of
-            Just diff ->
-                case diff of
-                    SortedKey sortedKeyDiff ->
-                        sortedKeyDiffElement sortedKeyDiff
-
-                    Consolidated consolidatedList ->
-                        consolidatedListElement consolidatedList
-
-            Nothing ->
-                text ""
         ]
+
+
+jsonOutput : Model -> Element Msg
+jsonOutput model =
+    case model.diff of
+        Just diff ->
+            case diff of
+                SortedKey sortedKeyDiff ->
+                    sortedKeyDiffElement sortedKeyDiff
+
+                Consolidated consolidatedList ->
+                    consolidatedListElement consolidatedList
+
+        Nothing ->
+            text ""
 
 
 
@@ -341,14 +338,14 @@ consolidatedListElement consolidated =
 sortedKeyDiffElement : SortedKeyDiff -> Element Msg
 sortedKeyDiffElement sortedKeyDiff =
     Element.column
-        []
-        [ Element.html (Html.h3 [] [ Html.text "Mismatched Content" ])
+        [ centerX ]
+        [ el [ centerX ] (Element.text "Mismatched Content")
         , mismatchedContent sortedKeyDiff.mismatched_value
-        , Element.html (Html.h3 [] [ Html.text "Missing from A" ])
+        , el [ centerX ] (Element.text "Missing from A")
         , matchingContent sortedKeyDiff.missing_from_a
-        , Element.html (Html.h3 [] [ Html.text "Missing from B" ])
+        , Element.text "Missing from B"
         , matchingContent sortedKeyDiff.missing_from_b
-        , Element.html (Html.h3 [] [ Html.text "Matching Key/Value Pairs" ])
+        , el [ centerX ] (Element.text "Matching Key/Value Pairs")
         , matchingContent sortedKeyDiff.matched_pairs
         ]
 
@@ -358,13 +355,13 @@ matchingContent listOfMatchedValues =
     Element.table []
         { data = listOfMatchedValues
         , columns =
-            [ { header = Element.text "Key"
+            [ { header = el [Font.bold] (Element.text "Key")
               , width = fill
-              , view = \matchedValue -> Element.text matchedValue.key
+              , view = \matchedValue -> el [Font.alignLeft](Element.text matchedValue.key)
               }
-            , { header = Element.text "Value"
+            , { header = el [Font.bold] (Element.text "Value")
               , width = fill
-              , view = \matchedValue -> Element.text (Json.Encode.encode 0 matchedValue.value)
+              , view = \matchedValue -> el [Font.alignLeft] (Element.text (Json.Encode.encode 0 matchedValue.value))
               }
             ]
         }
