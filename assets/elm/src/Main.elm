@@ -20,12 +20,38 @@ import Json.Encode exposing (Value, encode, object)
 type alias Model =
     { jsonTextA : String
     , jsonTextB : String
-    , sortedKeyDiff : Maybe SortedKeyDiff
+    , diff : Maybe DiffType
+    , rbDiffType : RbDiffType
     }
 
 
 type alias Flags =
     ()
+
+
+type DiffType
+    = SortedKey SortedKeyDiff
+    | Consolidated (List ConsolidatedRow)
+
+
+type
+    RbDiffType
+    --mutually exclusive list for radio button
+    = RbSortedKey
+    | RbConsolidated
+
+
+type alias ConsolidatedRow =
+    { key : String
+    , value : ConsolidatedValue
+    }
+
+
+type ConsolidatedValue
+    = ConsolidatedMatchedValue String
+    | ConsolidatedMismatchedValue ( String, String )
+    | ConsolidatedMissingAValue String
+    | ConsolidatedMissingBValue String
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -43,7 +69,8 @@ init _ =
     "zip": 60323,
     "city": "Bigville"
 }"""
-      , sortedKeyDiff = Nothing
+      , diff = Nothing
+      , rbDiffType = RbSortedKey
       }
     , Cmd.none
     )
@@ -77,7 +104,8 @@ type Msg
     | JsonTextA String
     | JsonTextB String
     | UserRequestedDiff
-    | ServerReturnedDiff (Result Http.Error SortedKeyDiff)
+    | ServerReturnedDiff (Result Http.Error DiffType)
+    | RbSelected RbDiffType
 
 
 type alias MatchedPair =
@@ -148,14 +176,16 @@ mismatchedValueDecoder =
         (field "value_b" value)
 
 
-sortedKeyDiffDecoder : Decoder SortedKeyDiff
+sortedKeyDiffDecoder : Decoder DiffType
 sortedKeyDiffDecoder =
-    map4
-        SortedKeyDiff
-        (field "matched_pairs" (list matchedPairDecoder))
-        (field "mismatched_values" (list mismatchedValueDecoder))
-        (field "missing_from_a" (list matchedPairDecoder))
-        (field "missing_from_b" (list matchedPairDecoder))
+    Json.Decode.map SortedKey
+        (map4
+            SortedKeyDiff
+            (field "matched_pairs" (list matchedPairDecoder))
+            (field "mismatched_values" (list mismatchedValueDecoder))
+            (field "missing_from_a" (list matchedPairDecoder))
+            (field "missing_from_b" (list matchedPairDecoder))
+        )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -167,29 +197,44 @@ update msg model =
         JsonTextB s ->
             ( { model | jsonTextB = s }, Cmd.none )
 
+        RbSelected rbDiffType ->
+            ( { model | rbDiffType = rbDiffType }, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
         UserRequestedDiff ->
-            ( model
-            , Http.post
-                { url = "http://localhost:4000/api/sorted-key-diff"
-                , body = encodeBody model.jsonTextA model.jsonTextB
-                , expect = Http.expectJson ServerReturnedDiff sortedKeyDiffDecoder
-                }
-            )
+            case model.rbDiffType of
+                RbSortedKey ->
+                    ( model
+                    , Http.post
+                        { url = "http://localhost:4000/api/sorted-key-diff"
+                        , body = encodeBody model.jsonTextA model.jsonTextB
+                        , expect = Http.expectJson ServerReturnedDiff sortedKeyDiffDecoder
+                        }
+                    )
 
-        ServerReturnedDiff result ->
-            case result of
-                Ok sortedKeyDiff ->
-                    ( { model | sortedKeyDiff = Just sortedKeyDiff }, Cmd.none )
+                RbConsolidated ->
+                    ( model
+                    , Cmd.none
+                    )
+
+        ServerReturnedDiff maybeDiff ->
+            case maybeDiff of
+                Ok diff ->
+                    case diff of
+                        SortedKey sortedKeyDiff ->
+                            ( { model | diff = Just diff }, Cmd.none )
+
+                        Consolidated _ ->
+                            ( model, Cmd.none )
 
                 Err error ->
                     let
                         _ =
                             Debug.log "Error is" error
                     in
-                    ( { model | sortedKeyDiff = Nothing }, Cmd.none )
+                    ( { model | diff = Nothing }, Cmd.none )
 
 
 
@@ -218,16 +263,30 @@ jsonInput model =
         ]
         [ jsonTextElementA model.jsonTextA
         , jsonTextElementB model.jsonTextB
-        , Input.button [ centerX, Background.color (Element.rgb255 238 238 238) ]
+        , Input.button [ centerX, Background.color lightBlue ]
             { onPress = Just UserRequestedDiff
             , label = Element.text "Diff"
             }
-        , case model.sortedKeyDiff of
-            Just sortedKeyDiff ->
-                jsonDiffElement sortedKeyDiff
+        , Input.radio [ centerX, Background.color lightBlue ]
+            { onChange = \rbDiffType -> RbSelected rbDiffType
+            , selected = Just model.rbDiffType
+            , label = Input.labelAbove [] (text "Diff")
+            , options =
+                [ Input.option RbSortedKey (text "Sorted Key")
+                , Input.option RbConsolidated (text "Consolidated")
+                ]
+            }
+        , case model.diff of
+            Just diff ->
+                case diff of
+                    SortedKey sortedKeyDiff ->
+                        jsonDiffElement sortedKeyDiff
+
+                    Consolidated consolidated ->
+                        Element.el [] (Element.text "TODO")
 
             Nothing ->
-                text "No content yet"
+                text "Inputs must be valid JSON"
         ]
 
 
@@ -277,9 +336,7 @@ matchingContentRow matchedValue =
 mismatchedValueRow mismatchedValue =
     Html.tr [ Html.Attributes.align "left" ]
         [ Html.td
-            [ Html.Attributes.style "background-color" "salmon"
-            , Html.Attributes.style "width" "50%"
-            ]
+            []
             [ Html.text mismatchedValue.key ]
         , Html.td
             [ Html.Attributes.style "background-color" "lightblue"
@@ -366,3 +423,19 @@ main =
 lightCharcoal : Color
 lightCharcoal =
     rgb255 136 138 133
+
+
+blue =
+    rgb255 52 101 164
+
+
+lightBlue =
+    rgb255 139 178 248
+
+
+lightYellow =
+    rgb255 255 255 96
+
+
+white =
+    rgb255 255 255 255
