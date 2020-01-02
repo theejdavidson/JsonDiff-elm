@@ -8,7 +8,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html
 import Http exposing (Body, jsonBody)
-import Json.Decode exposing (Decoder, fail, field, list, map2, map3, map4, string, value)
+import Json.Decode exposing (Decoder, decodeString, fail, field, list, map2, map3, map4, string, value)
 import Json.Encode exposing (Value, encode, object)
 
 
@@ -21,6 +21,7 @@ type alias Model =
     , jsonTextB : String
     , diff : Maybe DiffType
     , rbDiffType : RbDiffType
+    , spellCheck : Bool
     }
 
 
@@ -72,6 +73,7 @@ init _ =
 }"""
       , diff = Nothing
       , rbDiffType = RbSortedKey
+      , spellCheck = False
       }
     , Cmd.none
     )
@@ -107,6 +109,7 @@ type Msg
     | UserRequestedDiff
     | ServerReturnedDiff (Result Http.Error DiffType)
     | RbSelected RbDiffType
+    | Spellcheck Bool
 
 
 type alias MatchedPair =
@@ -209,6 +212,17 @@ consolidatedDiffDecoder =
         (list consolidatedRowDecoder)
 
 
+
+{--
+validateInput jsonText =
+    decodeString value jsonText
+    case Result of
+        Ok -> jsonText
+
+        Err -> Json.Decode.errorToString
+--}
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -223,6 +237,9 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+        Spellcheck spellCheck ->
+            ( { model | spellCheck = spellCheck }, Cmd.none )
 
         UserRequestedDiff ->
             case model.rbDiffType of
@@ -266,8 +283,14 @@ view model =
     { title = "JsonDiff"
     , body =
         [ layout [] <|
-            column [ padding 20, spacing 20]
+            column [ padding 20, spacing 20 ]
                 [ jsonInput model
+                , Input.checkbox []
+                    { onChange = Spellcheck
+                    , icon = Input.defaultCheckbox
+                    , checked = model.spellCheck
+                    , label = Input.labelRight [] (text "Spellcheck")
+                    }
                 , methodSelection model
                 , jsonOutput model
                 ]
@@ -283,8 +306,8 @@ jsonInput model =
         , spacing 20
         , centerX
         ]
-        [ jsonTextElementA model.jsonTextA
-        , jsonTextElementB model.jsonTextB
+        [ jsonTextElementA model model.jsonTextA
+        , jsonTextElementB model model.jsonTextB
         ]
 
 
@@ -324,20 +347,19 @@ jsonOutput model =
             text ""
 
 
-
 consolidatedValueCell consolidatedRow =
     case consolidatedRow.row_type of
         ConsolidatedMatchedPair ->
-            row [ Border.width 1, Border.color blue, Font.color blue ]
+            row [ Border.width 1, Border.color standardBorderColor, Background.color matchingContentColor ]
                 [ Element.el [ alignLeft ] (text "= ")
                 , Element.el [ alignLeft ] (text (valueToString consolidatedRow.value))
                 ]
 
         Mismatched ->
-            row [ Border.width 1, Border.color (rgb 0 0.7 0) ]
+            row [ Border.width 1, Border.color standardBorderColor, Background.color mismatchedContentColor ]
                 [ Element.el [ alignLeft ] (text "≠ ")
-                , Element.el [ alignLeft, Border.width 1, Border.color (rgb 0 0.7 0) ] (text (valueToString consolidatedRow.value))
-                , Element.el [ centerX, Border.width 1, Border.color (rgb 0 0.7 0) ]
+                , Element.el [ alignLeft ] (text (valueToString consolidatedRow.value))
+                , Element.el [ centerX ]
                     (text
                         (case consolidatedRow.other_value of
                             Just value ->
@@ -350,13 +372,13 @@ consolidatedValueCell consolidatedRow =
                 ]
 
         MissingFromA ->
-            row [ Border.width 1, Font.color purple ]
+            row [ Border.width 1, Background.color missingFromAColor ]
                 [ Element.el [ alignLeft ] (text "⇠ ")
                 , Element.el [ alignLeft ] (text (valueToString consolidatedRow.value))
                 ]
 
         MissingFromB ->
-            row [ Border.width 1, Font.color forestGreen ]
+            row [ Border.width 1, Background.color missingFromBColor ]
                 [ Element.el [ alignLeft ] (text "⇢ ")
                 , Element.el [ alignLeft ] (text (valueToString consolidatedRow.value))
                 ]
@@ -364,24 +386,17 @@ consolidatedValueCell consolidatedRow =
 
 consolidatedListElement : List ConsolidatedRow -> Element Msg
 consolidatedListElement consolidated =
-    Element.table [ Border.width 1, Border.color lightCharcoal ]
+    Element.table [ Border.width 1, Border.color standardBorderColor ]
         { data = consolidated
         , columns =
             [ { header = el [ Font.bold ] (Element.text "Key")
               , width = fill
-              , view = \con -> el [ Font.alignLeft, Border.width 1, Border.color lightCharcoal ] (Element.text con.key)
+              , view = \con -> el [ Font.alignLeft, Border.width 1, Border.color standardBorderColor ] (Element.text con.key)
               }
             , { header = el [ Font.bold ] (Element.text "Value")
               , width = fill
               , view = consolidatedValueCell
               }
-
-            {--case consolidated. of
-                    Mismatched ->
-                        { header = el [Font.bold] (Element.text "Value A")
-                        , width = fill
-                        , view = \con -> el [ Font.alignLeft ] (Element.text con.value)
-                        }--}
             ]
         }
 
@@ -389,15 +404,21 @@ consolidatedListElement consolidated =
 sortedKeyDiffElement : SortedKeyDiff -> Element Msg
 sortedKeyDiffElement sortedKeyDiff =
     Element.column
-        [ centerX ]
-        [ el [ centerX ] (Element.text "Mismatched Content")
+        [ centerX, spacingXY 4 10 ]
+        [ el [ centerX, Font.bold ] (Element.text "Mismatched Content")
         , mismatchedContent sortedKeyDiff.mismatched_value
-        , el [ centerX ] (Element.text "Missing from A")
-        , matchingContent sortedKeyDiff.missing_from_a
-        , Element.text "Missing from B"
-        , matchingContent sortedKeyDiff.missing_from_b
-        , el [ centerX ] (Element.text "Matching Key/Value Pairs")
-        , matchingContent sortedKeyDiff.matched_pairs
+        , row []
+            [ column [ alignLeft, alignTop ]
+                [ el [ centerX, Font.bold ] (Element.text "Missing from A")
+                , el [ Background.color missingFromAColor ] (matchingContent sortedKeyDiff.missing_from_a)
+                ]
+            , column [ alignRight, alignTop ]
+                [ el [ centerX, Font.bold ] (Element.text "Missing from B")
+                , el [ Background.color missingFromBColor ] (matchingContent sortedKeyDiff.missing_from_b)
+                ]
+            ]
+        , el [ centerX, Font.bold ] (Element.text "Matching Key/Value Pairs")
+        , el [ Background.color matchingContentColor, centerX, width fill ] (matchingContent sortedKeyDiff.matched_pairs)
         ]
 
 
@@ -406,13 +427,13 @@ matchingContent listOfMatchedValues =
     Element.table []
         { data = listOfMatchedValues
         , columns =
-            [ { header = el [ Font.bold ] (Element.text "Key")
+            [ { header = el [ Border.width 1, Border.color standardBorderColor, Font.bold ] (Element.text "Key")
               , width = fill
-              , view = \matchedValue -> el [ Font.alignLeft ] (Element.text matchedValue.key)
+              , view = \matchedValue -> el [ Border.width 1, Border.color standardBorderColor, Font.alignLeft ] (Element.text matchedValue.key)
               }
-            , { header = el [ Font.bold ] (Element.text "Value")
+            , { header = el [ Border.width 1, Border.color standardBorderColor, Font.bold ] (Element.text "Value")
               , width = fill
-              , view = \matchedValue -> el [ Font.alignLeft ] (Element.text (Json.Encode.encode 0 matchedValue.value))
+              , view = \matchedValue -> el [ Border.width 1, Border.color standardBorderColor, Font.alignLeft ] (Element.text (Json.Encode.encode 0 matchedValue.value))
               }
             ]
         }
@@ -420,32 +441,32 @@ matchingContent listOfMatchedValues =
 
 mismatchedContent : List MismatchedValue -> Element Msg
 mismatchedContent listOfMismatchedValues =
-    Element.table [ Background.color lightYellow ]
+    Element.table [ Background.color mismatchedContentColor ]
         { data = listOfMismatchedValues
         , columns =
-            [ { header = el [ Font.bold, Background.color lightBlue ] (Element.text "Key")
+            [ { header = el [ Border.width 1, Border.color standardBorderColor, Font.bold ] (Element.text "Key")
               , width = fill
-              , view = \mismatchedValue -> el [ Font.alignLeft ] (Element.text mismatchedValue.key)
+              , view = \mismatchedValue -> el [ Border.width 1, Border.color standardBorderColor, Font.alignLeft ] (Element.text mismatchedValue.key)
               }
-            , { header = el [ Font.bold ] (Element.text "A Value")
+            , { header = el [ Border.width 1, Border.color standardBorderColor, Font.bold ] (Element.text "A Value")
               , width = fill
-              , view = \mismatchedValue -> el [ Font.alignLeft ] (Element.text (Json.Encode.encode 0 mismatchedValue.value_a))
+              , view = \mismatchedValue -> el [ Border.width 1, Border.color standardBorderColor, Font.alignLeft ] (Element.text (Json.Encode.encode 0 mismatchedValue.value_a))
               }
-            , { header = el [ Font.bold ] (Element.text "B Value")
+            , { header = el [ Border.width 1, Border.color standardBorderColor, Font.bold ] (Element.text "B Value")
               , width = fill
-              , view = \mismatchedValue -> el [ Font.alignLeft ] (Element.text (Json.Encode.encode 0 mismatchedValue.value_b))
+              , view = \mismatchedValue -> el [ Border.width 1, Border.color standardBorderColor, Font.alignLeft ] (Element.text (Json.Encode.encode 0 mismatchedValue.value_b))
               }
             ]
         }
 
 
-jsonTextElementA : String -> Element Msg
-jsonTextElementA jsonTextA =
+jsonTextElementA : Model -> String -> Element Msg
+jsonTextElementA model jsonTextA =
     Input.multiline
         [ height (px 350)
         , Border.width 1
         , Border.rounded 3
-        , Border.color lightCharcoal
+        , Border.color standardBorderColor
         , padding 3
         ]
         { onChange = JsonTextA
@@ -454,18 +475,19 @@ jsonTextElementA jsonTextA =
         , label =
             Input.labelAbove [] <|
                 Element.text "Paste JSON text A below:"
-        , spellcheck = False
+        , spellcheck = model.spellCheck
         }
 
 
-jsonTextElementB : String -> Element Msg
-jsonTextElementB jsonTextB =
+jsonTextElementB : Model -> String -> Element Msg
+jsonTextElementB model jsonTextB =
     Input.multiline
         [ height (px 350)
         , Border.width 1
         , Border.rounded 3
-        , Border.color lightCharcoal
+        , Border.color standardBorderColor
         , padding 3
+        , alignRight
         ]
         { onChange = JsonTextB
         , text = jsonTextB
@@ -473,7 +495,7 @@ jsonTextElementB jsonTextB =
         , label =
             Input.labelAbove [] <|
                 Element.text "Paste JSON text B below:"
-        , spellcheck = False
+        , spellcheck = model.spellCheck
         }
 
 
@@ -505,11 +527,11 @@ blue =
 
 
 lightBlue =
-    rgb255 139 178 248
+    rgb255 92 213 255
 
 
 lightYellow =
-    rgb255 255 255 96
+    rgb255 255 255 200
 
 
 white =
@@ -522,3 +544,36 @@ forestGreen =
 
 purple =
     rgb255 128 0 128
+
+
+lightRed =
+    rgb255 255 200 200
+
+
+lightGreen =
+    rgb255 200 255 200
+
+
+mismatchedContentColor : Color
+mismatchedContentColor =
+    lightYellow
+
+
+matchingContentColor : Color
+matchingContentColor =
+    lightBlue
+
+
+missingFromAColor : Color
+missingFromAColor =
+    lightRed
+
+
+missingFromBColor : Color
+missingFromBColor =
+    lightGreen
+
+
+standardBorderColor : Color
+standardBorderColor =
+    lightCharcoal
