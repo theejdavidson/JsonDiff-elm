@@ -6,6 +6,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Html
 import Http exposing (Body, jsonBody)
 import Json.Decode exposing (Decoder, fail, field, list, map2, map3, map4, string, value)
 import Json.Encode exposing (Value, encode, object)
@@ -199,7 +200,7 @@ consolidatedTypeDecoder typeText =
             Json.Decode.succeed MissingFromB
 
         _ ->
-            Json.Decode.fail <| "Unknown theme: " ++ typeText
+            Json.Decode.fail <| "Unknown type: " ++ typeText
 
 
 consolidatedDiffDecoder : Decoder DiffType
@@ -265,7 +266,7 @@ view model =
     { title = "JsonDiff"
     , body =
         [ layout [] <|
-            column []
+            column [ padding 20, spacing 20]
                 [ jsonInput model
                 , methodSelection model
                 , jsonOutput model
@@ -290,9 +291,9 @@ jsonInput model =
 methodSelection : Model -> Element Msg
 methodSelection model =
     column
-        [ centerX ]
+        [ centerX, spacingXY 5 10 ]
         [ Input.radioRow
-            [ spacing 3]
+            [ spacing 55 ]
             { onChange = \rbDiffType -> RbSelected rbDiffType
             , selected = Just model.rbDiffType
             , label = Input.labelHidden "Diff method"
@@ -301,7 +302,7 @@ methodSelection model =
                 , Input.option RbConsolidated (text "Consolidated")
                 ]
             }
-        , Input.button [ centerX, Background.color lightBlue, spacing 10 ]
+        , Input.button [ centerX, Background.color lightBlue, spacingXY 10 20, paddingXY 30 5, Border.width 3, Border.rounded 6, centerY ]
             { onPress = Just UserRequestedDiff
             , label = Element.text "Diff"
             }
@@ -324,15 +325,65 @@ jsonOutput model =
 
 
 
---consolidatedRowElement : ConsolidatedRow -> Element Msg
---consolidatedRowElement consolidatedRow =
---  case consolidatedRow.other_value of
--- Just other_value ->
+consolidatedValueCell consolidatedRow =
+    case consolidatedRow.row_type of
+        ConsolidatedMatchedPair ->
+            row [ Border.width 1, Border.color blue, Font.color blue ]
+                [ Element.el [ alignLeft ] (text "= ")
+                , Element.el [ alignLeft ] (text (valueToString consolidatedRow.value))
+                ]
+
+        Mismatched ->
+            row [ Border.width 1, Border.color (rgb 0 0.7 0) ]
+                [ Element.el [ alignLeft ] (text "≠ ")
+                , Element.el [ alignLeft, Border.width 1, Border.color (rgb 0 0.7 0) ] (text (valueToString consolidatedRow.value))
+                , Element.el [ centerX, Border.width 1, Border.color (rgb 0 0.7 0) ]
+                    (text
+                        (case consolidatedRow.other_value of
+                            Just value ->
+                                valueToString value
+
+                            Nothing ->
+                                "null"
+                        )
+                    )
+                ]
+
+        MissingFromA ->
+            row [ Border.width 1, Font.color purple ]
+                [ Element.el [ alignLeft ] (text "⇠ ")
+                , Element.el [ alignLeft ] (text (valueToString consolidatedRow.value))
+                ]
+
+        MissingFromB ->
+            row [ Border.width 1, Font.color forestGreen ]
+                [ Element.el [ alignLeft ] (text "⇢ ")
+                , Element.el [ alignLeft ] (text (valueToString consolidatedRow.value))
+                ]
 
 
 consolidatedListElement : List ConsolidatedRow -> Element Msg
 consolidatedListElement consolidated =
-    Element.el [] (Element.text "")
+    Element.table [ Border.width 1, Border.color lightCharcoal ]
+        { data = consolidated
+        , columns =
+            [ { header = el [ Font.bold ] (Element.text "Key")
+              , width = fill
+              , view = \con -> el [ Font.alignLeft, Border.width 1, Border.color lightCharcoal ] (Element.text con.key)
+              }
+            , { header = el [ Font.bold ] (Element.text "Value")
+              , width = fill
+              , view = consolidatedValueCell
+              }
+
+            {--case consolidated. of
+                    Mismatched ->
+                        { header = el [Font.bold] (Element.text "Value A")
+                        , width = fill
+                        , view = \con -> el [ Font.alignLeft ] (Element.text con.value)
+                        }--}
+            ]
+        }
 
 
 sortedKeyDiffElement : SortedKeyDiff -> Element Msg
@@ -355,13 +406,13 @@ matchingContent listOfMatchedValues =
     Element.table []
         { data = listOfMatchedValues
         , columns =
-            [ { header = el [Font.bold] (Element.text "Key")
+            [ { header = el [ Font.bold ] (Element.text "Key")
               , width = fill
-              , view = \matchedValue -> el [Font.alignLeft](Element.text matchedValue.key)
+              , view = \matchedValue -> el [ Font.alignLeft ] (Element.text matchedValue.key)
               }
-            , { header = el [Font.bold] (Element.text "Value")
+            , { header = el [ Font.bold ] (Element.text "Value")
               , width = fill
-              , view = \matchedValue -> el [Font.alignLeft] (Element.text (Json.Encode.encode 0 matchedValue.value))
+              , view = \matchedValue -> el [ Font.alignLeft ] (Element.text (Json.Encode.encode 0 matchedValue.value))
               }
             ]
         }
@@ -391,7 +442,7 @@ mismatchedContent listOfMismatchedValues =
 jsonTextElementA : String -> Element Msg
 jsonTextElementA jsonTextA =
     Input.multiline
-        [ height (px 600)
+        [ height (px 350)
         , Border.width 1
         , Border.rounded 3
         , Border.color lightCharcoal
@@ -410,7 +461,7 @@ jsonTextElementA jsonTextA =
 jsonTextElementB : String -> Element Msg
 jsonTextElementB jsonTextB =
     Input.multiline
-        [ height (px 600)
+        [ height (px 350)
         , Border.width 1
         , Border.rounded 3
         , Border.color lightCharcoal
@@ -463,3 +514,11 @@ lightYellow =
 
 white =
     rgb255 255 255 255
+
+
+forestGreen =
+    rgb255 34 139 34
+
+
+purple =
+    rgb255 128 0 128
