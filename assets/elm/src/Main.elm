@@ -162,10 +162,6 @@ validateJson jsonText model =
 
 matchedPairDecoder : Decoder MatchedPair
 matchedPairDecoder =
-    let
-        _ =
-            Debug.log "Simple value:" (valueToString (Json.Encode.int 3))
-    in
     map2
         MatchedPair
         (field "key" string)
@@ -287,10 +283,6 @@ update msg model =
                     ( { model | diff = Just diff }, Cmd.none )
 
                 Err error ->
-                    let
-                        _ =
-                            Debug.log "Error is" error
-                    in
                     ( { model | diff = Nothing }, Cmd.none )
 
 

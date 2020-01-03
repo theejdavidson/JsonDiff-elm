@@ -133,7 +133,7 @@ defmodule JsonDiffLogic.JsonDiffHelpers do
 
       is_list(parsed) ->
         parsed
-        |> Enum.withIndex()
+        |> Enum.with_index()
         |> Enum.map(fn {child, index} ->
           recursive_flatten(child)
           |> Enum.map(fn {path, value} -> {[index | path], value} end)

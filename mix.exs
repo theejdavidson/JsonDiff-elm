@@ -3,6 +3,12 @@ defmodule JsonDiff.MixProject do
 
   def project do
     [
+      releases: [
+        demo: [
+          include_executables_for: [:unix],
+          applications: [runtime_tools: :permanent]
+        ]
+      ],
       app: :json_diff,
       version: "0.1.0",
       elixir: "~> 1.5",
@@ -37,7 +43,7 @@ defmodule JsonDiff.MixProject do
       {:phoenix_pubsub, "~> 1.1"},
       {:phoenix_ecto, "~> 4.0"},
       {:ecto_sql, "~> 3.1"},
-      {:postgrex, ">= 0.0.0"},
+      {:postgrex, "~> 0.15.3"},
       {:phoenix_html, "~> 2.11"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:gettext, "~> 0.11"},

@@ -4,7 +4,7 @@ use Mix.Config
 config :json_diff, JsonDiff.Repo,
   username: "postgres",
   password: "postgres",
-  database: "json_diff_dev",
+  database: "json_diff_db",
   hostname: "localhost",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -15,7 +15,7 @@ config :json_diff, JsonDiff.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we use it
 # with webpack to recompile .js and .css sources.
-config :json_diff, JsonDiffWeb.Endpoint,
+config :json_diff, JsonDiffWeb.Endpoint, server: true,
   http: [port: 4000],
   debug_errors: true,
   code_reloader: true,
