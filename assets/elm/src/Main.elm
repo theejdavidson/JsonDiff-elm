@@ -4,11 +4,12 @@ import Browser
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Event
 import Element.Font as Font
 import Element.Input as Input
 import Html
 import Http exposing (Body, jsonBody)
-import Json.Decode exposing (Decoder, decodeString, fail, field, list, map2, map3, map4, string, value)
+import Json.Decode exposing (Decoder, decodeString, errorToString, fail, field, list, map2, map3, map4, string, value)
 import Json.Encode exposing (Value, encode, object)
 
 
@@ -22,6 +23,8 @@ type alias Model =
     , diff : Maybe DiffType
     , rbDiffType : RbDiffType
     , spellCheck : Bool
+    , invalidJsonAError : Maybe String
+    , invalidJsonBError : Maybe String
     }
 
 
@@ -74,6 +77,8 @@ init _ =
       , diff = Nothing
       , rbDiffType = RbSortedKey
       , spellCheck = False
+      , invalidJsonAError = Nothing
+      , invalidJsonBError = Nothing
       }
     , Cmd.none
     )
@@ -110,6 +115,8 @@ type Msg
     | ServerReturnedDiff (Result Http.Error DiffType)
     | RbSelected RbDiffType
     | Spellcheck Bool
+    | JsonErrorA (Maybe String)
+    | JsonErrorB (Maybe String)
 
 
 type alias MatchedPair =
@@ -143,13 +150,21 @@ encodeBody jsonTextA jsonTextB =
         )
 
 
+validateJson : String -> Model -> Maybe String
+validateJson jsonText model =
+    case decodeString value jsonText of
+        Ok validJson ->
+            Nothing
+
+        Err err ->
+            Just (errorToString err)
+
+
 matchedPairDecoder : Decoder MatchedPair
 matchedPairDecoder =
     let
         _ =
             Debug.log "Simple value:" (valueToString (Json.Encode.int 3))
-
-        -- Debug.log "2 == 3?" (areEqual (Json.Encode.int 3) (Json.Encode.int 3))
     in
     map2
         MatchedPair
@@ -212,17 +227,6 @@ consolidatedDiffDecoder =
         (list consolidatedRowDecoder)
 
 
-
-{--
-validateInput jsonText =
-    decodeString value jsonText
-    case Result of
-        Ok -> jsonText
-
-        Err -> Json.Decode.errorToString
---}
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -240,6 +244,22 @@ update msg model =
 
         Spellcheck spellCheck ->
             ( { model | spellCheck = spellCheck }, Cmd.none )
+
+        JsonErrorA maybeError ->
+            case maybeError of
+                Just invalidJsonAError ->
+                    ( { model | invalidJsonAError = Just invalidJsonAError }, Cmd.none )
+
+                Nothing ->
+                    ( { model | invalidJsonAError = Nothing }, Cmd.none )
+
+        JsonErrorB maybeError ->
+            case maybeError of
+                Just invalidJsonBError ->
+                    ( { model | invalidJsonBError = Just invalidJsonBError }, Cmd.none )
+
+                Nothing ->
+                    ( { model | invalidJsonBError = Nothing }, Cmd.none )
 
         UserRequestedDiff ->
             case model.rbDiffType of
@@ -283,28 +303,37 @@ view model =
     { title = "JsonDiff"
     , body =
         [ layout [] <|
-            column [ padding 20, spacing 20 ]
-                [ jsonInput model
-                , Input.checkbox []
-                    { onChange = Spellcheck
-                    , icon = Input.defaultCheckbox
-                    , checked = model.spellCheck
-                    , label = Input.labelRight [] (text "Spellcheck")
-                    }
-                , methodSelection model
-                , jsonOutput model
+            column [width fill]
+                [ header model
+                , column [ centerX, alignTop, padding 30 ]
+                    [ jsonInput model
+                    , Input.checkbox []
+                        { onChange = Spellcheck
+                        , icon = Input.defaultCheckbox
+                        , checked = model.spellCheck
+                        , label = Input.labelRight [] (text "Spellcheck")
+                        }
+                    , methodSelection model
+                    , jsonOutput model
+                    ]
                 ]
         ]
     }
 
 
+header : Model -> Element Msg
+header model =
+    row [ alignTop, width fill, padding 10, spacing 10 ]
+        [ el [ alignLeft, Font.justify ] (text "Json Diff Tool\nwritten by Ethan Davidson")
+        , newTabLink [ alignRight ] { url = "https://github.com/theejdavidson", label = image [] { src = "/images/GitHub-Mark-32px.png", description = "github logo" } }
+        , newTabLink [] { url = "https://www.linkedin.com/in/ethan-davidson-67b786176/", label = image [] { src = "/images/LI-In-Bug.png", description = "linkedin logo" } }
+        ]
+
+
 jsonInput : Model -> Element Msg
 jsonInput model =
     row
-        [ width fill
-        , padding 20
-        , spacing 20
-        , centerX
+        [ centerX
         ]
         [ jsonTextElementA model model.jsonTextA
         , jsonTextElementB model model.jsonTextB
@@ -386,7 +415,7 @@ consolidatedValueCell consolidatedRow =
 
 consolidatedListElement : List ConsolidatedRow -> Element Msg
 consolidatedListElement consolidated =
-    Element.table [ Border.width 1, Border.color standardBorderColor ]
+    Element.table [ paddingXY 30 30 ]
         { data = consolidated
         , columns =
             [ { header = el [ Font.bold ] (Element.text "Key")
@@ -404,7 +433,7 @@ consolidatedListElement consolidated =
 sortedKeyDiffElement : SortedKeyDiff -> Element Msg
 sortedKeyDiffElement sortedKeyDiff =
     Element.column
-        [ centerX, spacingXY 4 10 ]
+        [ centerX, spacingXY 4 10, padding 15 ]
         [ el [ centerX, Font.bold ] (Element.text "Mismatched Content")
         , mismatchedContent sortedKeyDiff.mismatched_value
         , row []
@@ -462,41 +491,72 @@ mismatchedContent listOfMismatchedValues =
 
 jsonTextElementA : Model -> String -> Element Msg
 jsonTextElementA model jsonTextA =
-    Input.multiline
-        [ height (px 350)
-        , Border.width 1
-        , Border.rounded 3
-        , Border.color standardBorderColor
-        , padding 3
+    column [ width fill, alignTop ]
+        [ Input.multiline
+            [ height (px 350)
+            , Border.width 1
+            , Border.rounded 3
+            , Border.color standardBorderColor
+            , padding 3
+            , case validateJson jsonTextA model of
+                Just errorText ->
+                    Background.color lightRed
+
+                Nothing ->
+                    Background.color lightGreen
+            ]
+            { onChange = JsonTextA
+            , text = jsonTextA
+            , placeholder = Nothing
+            , label =
+                Input.labelAbove [] <|
+                    Element.text "Paste JSON text A below:"
+            , spellcheck = model.spellCheck
+            }
+        , paragraph []
+            [ case validateJson jsonTextA model of
+                Just stringError ->
+                    text stringError
+
+                Nothing ->
+                    text ""
+            ]
         ]
-        { onChange = JsonTextA
-        , text = jsonTextA
-        , placeholder = Nothing
-        , label =
-            Input.labelAbove [] <|
-                Element.text "Paste JSON text A below:"
-        , spellcheck = model.spellCheck
-        }
 
 
 jsonTextElementB : Model -> String -> Element Msg
 jsonTextElementB model jsonTextB =
-    Input.multiline
-        [ height (px 350)
-        , Border.width 1
-        , Border.rounded 3
-        , Border.color standardBorderColor
-        , padding 3
-        , alignRight
+    column [ width fill, alignTop ]
+        [ Input.multiline
+            [ height (px 350)
+            , Border.width 1
+            , Border.rounded 3
+            , Border.color standardBorderColor
+            , padding 3
+            , case validateJson jsonTextB model of
+                Just errorText ->
+                    Background.color lightRed
+
+                Nothing ->
+                    Background.color lightGreen
+            ]
+            { onChange = JsonTextB
+            , text = jsonTextB
+            , placeholder = Nothing
+            , label =
+                Input.labelAbove [] <|
+                    Element.text "Paste JSON text B below:"
+            , spellcheck = model.spellCheck
+            }
+        , paragraph []
+            [ case validateJson jsonTextB model of
+                Just stringError ->
+                    text stringError
+
+                Nothing ->
+                    text ""
+            ]
         ]
-        { onChange = JsonTextB
-        , text = jsonTextB
-        , placeholder = Nothing
-        , label =
-            Input.labelAbove [] <|
-                Element.text "Paste JSON text B below:"
-        , spellcheck = model.spellCheck
-        }
 
 
 
