@@ -4,14 +4,14 @@ defmodule JsonDiff.MixProject do
   def project do
     [
       releases: [
-        demo: [
+        json_diff: [
           include_executables_for: [:unix],
           applications: [runtime_tools: :permanent]
         ]
       ],
       app: :json_diff,
       version: "0.1.0",
-      elixir: "~> 1.5",
+      elixir: "~> 1.9.1",
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
@@ -48,7 +48,8 @@ defmodule JsonDiff.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
-      {:plug_cowboy, "~> 2.0"}
+      {:plug_cowboy, "~> 2.0"},
+      {:distillery, "~> 2.1"}
     ]
   end
 
