@@ -8,7 +8,7 @@
 use Mix.Config
 
 config :json_diff,
-my_config: "${MY_CONFIG}"
+  my_config: "${MY_CONFIG}",
   ecto_repos: [JsonDiff.Repo]
 
 # Configures the endpoint

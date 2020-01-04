@@ -18,7 +18,7 @@ config :json_diff, JsonDiff.Repo,
 config :json_diff, JsonDiffWeb.Endpoint, server: true,
   http: [port: 4000],
   debug_errors: true,
-  code_reloader: true,
+  code_reloader: false,
   check_origin: false,
   watchers: [
     node: [
