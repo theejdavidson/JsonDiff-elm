@@ -16,13 +16,22 @@ import Json.Encode exposing (Value, encode, object)
 
 ---- MODEL ----
 
+{--
+baseUrl =
+    if (production == True) then
+        "https://json-diff-ethandavidson.gigalixirapp.com/"
 
+    else
+        "http://localhost:4000/"
+
+--}
 type alias Model =
     { jsonTextA : String
     , jsonTextB : String
     , diff : Maybe DiffType
     , rbDiffType : RbDiffType
     , spellCheck : Bool
+    , production : Bool
     , invalidJsonAError : Maybe String
     , invalidJsonBError : Maybe String
     }
@@ -79,6 +88,7 @@ init _ =
       , spellCheck = False
       , invalidJsonAError = Nothing
       , invalidJsonBError = Nothing
+      , production = True
       }
     , Cmd.none
     )
@@ -262,7 +272,7 @@ update msg model =
                 RbSortedKey ->
                     ( model
                     , Http.post
-                        { url = "http://localhost:4000/api/sorted-key-diff"
+                        { url = "https://json-diff-ethandavidson.gigalixirapp.com/api/sorted-key-diff"
                         , body = encodeBody model.jsonTextA model.jsonTextB
                         , expect = Http.expectJson ServerReturnedDiff sortedKeyDiffDecoder
                         }
@@ -271,7 +281,7 @@ update msg model =
                 RbConsolidated ->
                     ( model
                     , Http.post
-                        { url = "http://localhost:4000/api/consolidated-diff"
+                        { url = "https://json-diff-ethandavidson.gigalixirapp.com/api/consolidated-diff"
                         , body = encodeBody model.jsonTextA model.jsonTextB
                         , expect = Http.expectJson ServerReturnedDiff consolidatedDiffDecoder
                         }
@@ -295,7 +305,7 @@ view model =
     { title = "JsonDiff"
     , body =
         [ layout [] <|
-            column [width fill]
+            column [ width fill ]
                 [ header model
                 , column [ centerX, alignTop, padding 30 ]
                     [ jsonInput model
