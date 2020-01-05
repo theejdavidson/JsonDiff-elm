@@ -37,7 +37,7 @@ module.exports = (env, options) => ({
         exclude: ["/elm-stuff/", "/node_modules"],
         loader: "elm-webpack-loader",
         options: {
-          debug: true,
+          debug: false,
           // NOTE: `warn` option was removed in Elm 0.19.
           // Re-enable if desired for use in Elm 0.18.
           // warn: true,
