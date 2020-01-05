@@ -1,5 +1,11 @@
 # JsonDiff
 
+Got it deployed! You can now view this project at
+
+https://json-diff-ethandavidson.gigalixirapp.com
+
+Any feedback would be much appreciated, I can be reached at theejdavidson@gmail.com
+
 To start your Phoenix server:
 
   * Install dependencies with `mix deps.get`
