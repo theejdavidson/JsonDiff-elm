@@ -16,7 +16,6 @@ import Json.Encode exposing (Value, encode, object)
 
 
 ---- MODEL ----
-
 {--
 baseUrl =
     if (production == True) then
@@ -26,6 +25,8 @@ baseUrl =
         "http://localhost:4000/"
 
 --}
+
+
 type alias Model =
     { jsonTextA : String
     , jsonTextB : String
@@ -39,7 +40,8 @@ type alias Model =
 
 
 type alias Flags =
-    { width : Int, height : Int }
+    { width : Int
+    , height : Int }
 
 
 type DiffType
@@ -104,6 +106,7 @@ subscriptions model =
     Browser.Events.onResize <|
         \width height ->
             DeviceClassified (Element.classifyDevice { width = width, height = height })
+
 
 
 ---- UPDATE ----
@@ -300,7 +303,6 @@ update msg model =
 
         DeviceClassified device ->
             ( { model | device = device }, Cmd.none )
-        
 
 
 
