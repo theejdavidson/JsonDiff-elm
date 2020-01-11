@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Browser
+import Browser.Events
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -31,14 +32,14 @@ type alias Model =
     , diff : Maybe DiffType
     , rbDiffType : RbDiffType
     , spellCheck : Bool
-    , production : Bool
     , invalidJsonAError : Maybe String
     , invalidJsonBError : Maybe String
+    , device : Device
     }
 
 
 type alias Flags =
-    ()
+    { width : Int, height : Int }
 
 
 type DiffType
@@ -69,7 +70,7 @@ type ConsolidatedType
 
 
 init : Flags -> ( Model, Cmd Msg )
-init _ =
+init flags =
     ( { jsonTextA = """{
     "street_address": "1232 Martin Luthor King Dr",
     "zip": 60323,
@@ -88,7 +89,7 @@ init _ =
       , spellCheck = False
       , invalidJsonAError = Nothing
       , invalidJsonBError = Nothing
-      , production = True
+      , device = Element.classifyDevice flags
       }
     , Cmd.none
     )
@@ -100,8 +101,9 @@ init _ =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
-
+    Browser.Events.onResize <|
+        \width height ->
+            DeviceClassified (Element.classifyDevice { width = width, height = height })
 
 
 ---- UPDATE ----
@@ -127,6 +129,7 @@ type Msg
     | Spellcheck Bool
     | JsonErrorA (Maybe String)
     | JsonErrorB (Maybe String)
+    | DeviceClassified Device
 
 
 type alias MatchedPair =
@@ -294,6 +297,10 @@ update msg model =
 
                 Err error ->
                     ( { model | diff = Nothing }, Cmd.none )
+
+        DeviceClassified device ->
+            ( { model | device = device }, Cmd.none )
+        
 
 
 
