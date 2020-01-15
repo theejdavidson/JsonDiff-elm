@@ -91,7 +91,7 @@ init flags =
       , spellCheck = False
       , invalidJsonAError = Nothing
       , invalidJsonBError = Nothing
-      , device = Element.classifyDevice flags
+      , device = classifyDevice flags
       }
     , Cmd.none
     )

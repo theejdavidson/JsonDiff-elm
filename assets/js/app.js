@@ -14,7 +14,11 @@ import "phoenix_html"
 import { Elm } from "../elm/src/Main.elm"
 
 const elmDiv = document.getElementById("elm-main")
-Elm.Main.init({ node: elmDiv })
+Elm.Main.init({ node: elmDiv, 
+    flags: {
+    width: window.innerWidth,
+    height: window.innerHeight
+  } })
 
 // Import local files
 //
