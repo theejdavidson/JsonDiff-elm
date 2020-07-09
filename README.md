@@ -1,10 +1,15 @@
 # JsonDiff
 
-Got it deployed! You can now view this project at
+A Json Diff tool! Just copy and paste two similar Json files, select a view type and hit the diff button. Differences in key/value pairs will be displayed below.
+
+Deployed at the following URL (may or may not be active at the time of viewing):
 
 https://json-diff-ethandavidson.gigalixirapp.com
 
 Any feedback would be much appreciated, I can be reached at theejdavidson@gmail.com
+
+
+## Running Project Locally
 
 To start your Phoenix server:
 
@@ -14,13 +19,3 @@ To start your Phoenix server:
   * Start Phoenix endpoint with `mix phx.server`
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
-
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
-
-## Learn more
-
-  * Official website: http://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Mailing list: http://groups.google.com/group/phoenix-talk
-  * Source: https://github.com/phoenixframework/phoenix
