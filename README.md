@@ -6,6 +6,10 @@ Deployed at the following URL (may or may not be active at the time of viewing):
 
 https://json-diff-ethandavidson.gigalixirapp.com
 
+Video overview: 
+
+https://vimeo.com/437281186
+
 Any feedback would be much appreciated, I can be reached at theejdavidson@gmail.com
 
 
